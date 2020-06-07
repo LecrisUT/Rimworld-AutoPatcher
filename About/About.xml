@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-	<name>[Author]ModName</name>
-	<author>Author</author>
-	<packageId>Author.ModName</packageId>
+	<name>[LC]AutoPatcher</name>
+	<author>Lecris</author>
+	<packageId>Lecris.AutoPatcher</packageId>
 	<url></url>
 	<description>(Empty)</description>
 	<supportedVersions>

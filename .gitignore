@@ -5,10 +5,10 @@
 *.ide-shm
 *.ide-wal
 .vs
-Source/ModName/.vs
-Source/ModName/ModName.csproj.user
-Source/ModName/obj
-Source/ModName/Properties/AssemblyInfo.cs
-ModName.rar
-1.1/Assemblies/ModName.pdb
-1.1/Assemblies/ModName.dll
+Source/AutoPatcher/.vs
+Source/AutoPatcher/ModName.csproj.user
+Source/AutoPatcher/obj
+Source/AutoPatcher/Properties/AssemblyInfo.cs
+AutoPatcher.rar
+1.1/Assemblies/AutoPatcher.pdb
+1.1/Assemblies/AutoPatcher.dll

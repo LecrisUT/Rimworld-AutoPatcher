@@ -1,5 +1,5 @@
-[url=https://github.com/Author/ModName][img]https://raw.githubusercontent.com/Author/ModName/master/SteamDescription/GithubLogo.png[/img][/url]
-[url=https://discord.gg/WRv5Sr2][img]https://raw.githubusercontent.com/Author/ModName/master/SteamDescription/DiscordLogo.png[/img][/url]
+[url=https://github.com/LecrisUT/Rimworld-AutoPatcher][img]https://raw.githubusercontent.com/LecrisUT/Rimworld-AutoPatcher/master/SteamDescription/GithubLogo.png[/img][/url]
+[url=https://discord.gg/WRv5Sr2][img]https://raw.githubusercontent.com/LecrisUT/Rimworld-AutoPatcher/master/SteamDescription/DiscordLogo.png[/img][/url]
 
 [h1]Overview[/h1]
 
