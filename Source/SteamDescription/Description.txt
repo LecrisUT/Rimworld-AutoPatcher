@@ -1,0 +1,10 @@
+[url=https://github.com/Author/ModName][img]https://raw.githubusercontent.com/Author/ModName/master/SteamDescription/GithubLogo.png[/img][/url]
+[url=https://discord.gg/WRv5Sr2][img]https://raw.githubusercontent.com/Author/ModName/master/SteamDescription/DiscordLogo.png[/img][/url]
+
+[h1]Overview[/h1]
+
+[h1]Compatibility[/h1]
+
+[h1]Acknowledgements[/h1]
+
+[h1]Additional Info[/h1]

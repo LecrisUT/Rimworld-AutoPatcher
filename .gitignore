@@ -1,0 +1,14 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+*.cache
+*.ide-shm
+*.ide-wal
+.vs
+Source/ModName/.vs
+Source/ModName/ModName.csproj.user
+Source/ModName/obj
+Source/ModName/Properties/AssemblyInfo.cs
+ModName.rar
+1.1/Assemblies/ModName.pdb
+1.1/Assemblies/ModName.dll

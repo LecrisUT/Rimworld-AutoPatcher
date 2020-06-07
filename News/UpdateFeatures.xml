@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+	<HugsLib.UpdateFeatureDef Abstract="true" Name="ModName_Update_Base">
+		<modNameReadable>Mod Name</modNameReadable>
+		<modIdentifier>Author.ModName</modIdentifier>
+		<linkUrl>https://github.com/Author/ModName</linkUrl>
+	</HugsLib.UpdateFeatureDef>
+	
+	<HugsLib.UpdateFeatureDef ParentName="ModName_Update_Base">
+		<defName>ModName_News_1_0</defName>
+		<assemblyVersion>1.0</assemblyVersion>
+		<content>&lt;b&gt;ModName&lt;/b&gt; Initial release|</content>
+	</HugsLib.UpdateFeatureDef>
+</Defs>
