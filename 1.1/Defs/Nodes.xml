@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_JobDef</defName>
+        <allDefs>true</allDefs>
+        <defType>JobDef</defType>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.JobDriverInDefOut>
+        <defName>AP_JobDriverInDefOut</defName>
+    </AutoPatcher.JobDriverInDefOut>
+
+    <AutoPatcher.BeginDriver>
+        <defName>AP_BeginNode_JobDriver</defName>
+        <allDrivers>true</allDrivers>
+        <baseDriver>JobDriver</baseDriver>
+    </AutoPatcher.BeginDriver>
+
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_StatDef_WorkSpeed</defName>
+        <allDefs>false</allDefs>
+        <defType>StatDef</defType>
+        <defListName>
+            <li>MiningSpeed</li>
+            <li>DeepDrillingSpeed</li>
+            <li>SmoothingSpeed</li>
+            <li>ResearchSpeed</li>
+            <li>AnimalGatherSpeed</li>
+            <li>PlantWorkSpeed</li>
+            <li>ConstructionSpeed</li>
+        </defListName>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_StatDef_WorkYield</defName>
+        <allDefs>false</allDefs>
+        <defType>StatDef</defType>
+        <defListName>
+            <li>MiningYield</li>
+            <li>AnimalGatherYield</li>
+            <li>PlantHarvestYield</li>
+        </defListName>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_StatDef_WorkSuccess</defName>
+        <allDefs>false</allDefs>
+        <defType>StatDef</defType>
+        <defListName>
+            <li>ConstructSuccessChance</li>
+            <li>FixBrokenDownBuildingSuccessChance</li>
+        </defListName>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.StatSearch>
+        <defName>AP_StatSearch</defName>
+        <findDeep>true</findDeep>
+        <findPawn>false</findPawn>
+    </AutoPatcher.StatSearch>
+
+    <AutoPatcher.ActionSearch>
+        <defName>AP_ActionSearch</defName>
+        <findDeep>true</findDeep>
+    </AutoPatcher.ActionSearch>
+
+    <AutoPatcher.JobDriverSearchToil>
+        <defName>AP_ToilSearch</defName>
+    </AutoPatcher.JobDriverSearchToil>
+</Defs>
