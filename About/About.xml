@@ -3,7 +3,7 @@
 	<name>[LC]AutoPatcher</name>
 	<author>Lecris</author>
 	<packageId>Lecris.AutoPatcher</packageId>
-	<url></url>
+	<url>https://github.com/LecrisUT/Rimworld-AutoPatcher</url>
 	<description>(Empty)</description>
 	<supportedVersions>
         <li>1.1</li>

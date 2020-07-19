@@ -55,11 +55,40 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Def\Nodes\ToilPatch.cs" />
+    <Compile Include="Temp_Attrition.cs" />
+    <Compile Include="Def\Interfaces.cs" />
+    <Compile Include="Def\Nodes\FilterNode.cs" />
+    <Compile Include="Def\Nodes\ActionSearch.cs" />
+    <Compile Include="Def\Nodes\ToilSearch.cs" />
+    <Compile Include="Harmony\Patch_GenTypes.cs" />
+    <Compile Include="Node.cs" />
+    <Compile Include="NodeUtility.cs" />
+    <Compile Include="MainMod.cs" />
+    <Compile Include="AutoPatcher_Controller.cs" />
+    <Compile Include="DefOf\NodeDefOf.cs" />
+    <Compile Include="Def\Nodes\BeginNode.cs" />
+    <Compile Include="Def\NodeBases\SearchNode.cs" />
+    <Compile Include="Def\NodeBases\PatchNode.cs" />
+    <Compile Include="Def\NodeBases\SplitNode.cs" />
+    <Compile Include="Def\NodeBases\PassNode.cs" />
+    <Compile Include="Def\Nodes\DriverInOutDef.cs" />
+    <Compile Include="Def\Nodes\StatSearch.cs" />
+    <Compile Include="Def\Nodes\StatPatch.cs" />
+    <Compile Include="Def\PatchTree.cs" />
+    <Compile Include="Def\NodeDef.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>AssemblyInfo.tt</DependentUpon>
     </Compile>
+    <Compile Include="Test\ToilPatchTest.cs" />
+    <Compile Include="Test\StatPatchTest.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Attrition">
+      <HintPath>..\..\..\..\..\..\workshop\content\294100\2159649757\v1.1\Assemblies\Attrition.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="TransformOnBuild" BeforeTargets="BeforeBuild">
