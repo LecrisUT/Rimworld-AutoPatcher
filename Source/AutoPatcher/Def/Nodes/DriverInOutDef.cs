@@ -8,13 +8,17 @@ namespace AutoPatcher
     // XML interface of generic type is prefered
     public class DriverIn_DefOut<T> : PassNode<Type, T> where T : Def
     {
+        protected bool includeDerived = true;
         public override bool Perform(Node node)
         {
             if (!base.Perform(node))
                 return false;
             var input = node.inputPorts[0].GetData<Type>();
             var output = DefDatabase<T>.AllDefs;
-            output = output.Where(t => input.Contains(DefToDriver(t)));
+            if (includeDerived)
+                output = output.Where(t => input.Any(tt => tt.IsAssignableFrom(DefToDriver(t))));
+            else
+                output = output.Where(t => input.Contains(DefToDriver(t)));
             node.outputPorts[0].SetData(output.ToList());
             return true;
         }
@@ -41,12 +45,12 @@ namespace AutoPatcher
         protected override Type DefToDriver(JobDef def)
             => def.driverClass;
     }
-    public class WorkGiverDriverInDefOut : DriverIn_DefOut<WorkGiverDef>
+    public class WorkGiverInDefOut : DriverIn_DefOut<WorkGiverDef>
     {
         protected override Type DefToDriver(WorkGiverDef def)
             => def.giverClass;
     }
-    public class StatDriverInDefOut : DriverIn_DefOut<StatDef>
+    public class StatWorkerInDefOut : DriverIn_DefOut<StatDef>
     {
         protected override Type DefToDriver(StatDef def)
             => def.workerClass;
@@ -56,12 +60,12 @@ namespace AutoPatcher
         protected override Type DefToDriver(JobDef def)
             => def.driverClass;
     }
-    public class WorkGiverDefInDriverOut : DefIn_DriverOut<WorkGiverDef>
+    public class WorkGiverDefInGiverOut : DefIn_DriverOut<WorkGiverDef>
     {
         protected override Type DefToDriver(WorkGiverDef def)
             => def.giverClass;
     }
-    public class StatDefInDriverOut : DefIn_DriverOut<StatDef>
+    public class StatDefInWorkerOut : DefIn_DriverOut<StatDef>
     {
         protected override Type DefToDriver(StatDef def)
             => def.workerClass;

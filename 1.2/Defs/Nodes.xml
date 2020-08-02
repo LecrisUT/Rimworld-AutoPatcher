@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
+    <!-- Job -->
     <AutoPatcher.BeginDef>
         <defName>AP_BeginNode_JobDef</defName>
         <allDefs>true</allDefs>
@@ -10,10 +11,61 @@
         <defName>AP_JobDriverInDefOut</defName>
     </AutoPatcher.JobDriverInDefOut>
 
+    <AutoPatcher.JobDefInDriverOut>
+        <defName>AP_JobDefInDriverOut</defName>
+    </AutoPatcher.JobDefInDriverOut>
+
     <AutoPatcher.BeginDriver>
         <defName>AP_BeginNode_JobDriver</defName>
         <allDrivers>true</allDrivers>
         <baseDriver>JobDriver</baseDriver>
+    </AutoPatcher.BeginDriver>
+
+    <AutoPatcher.JobSearch>
+        <defName>AP_JobSearch</defName>
+        <findDeep>true</findDeep>
+    </AutoPatcher.JobSearch>
+    
+    <!-- WorkGiver -->
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_WorkGiverDef</defName>
+        <allDefs>true</allDefs>
+        <defType>WorkGiverDef</defType>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.WorkGiverInDefOut>
+        <defName>AP_WorkGiverInDefOut</defName>
+    </AutoPatcher.WorkGiverInDefOut>
+
+    <AutoPatcher.WorkGiverDefInGiverOut>
+        <defName>AP_WorkGiverDefInGiverOut</defName>
+    </AutoPatcher.WorkGiverDefInGiverOut>
+
+    <AutoPatcher.BeginDriver>
+        <defName>AP_BeginNode_WorkGiver</defName>
+        <allDrivers>true</allDrivers>
+        <baseDriver>WorkGiver</baseDriver>
+    </AutoPatcher.BeginDriver>
+
+    <!-- Stat -->
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_StatDef</defName>
+        <allDefs>true</allDefs>
+        <defType>StatDef</defType>
+    </AutoPatcher.BeginDef>
+
+    <AutoPatcher.StatWorkerInDefOut>
+        <defName>AP_StatWorkerInDefOut</defName>
+    </AutoPatcher.StatWorkerInDefOut>
+
+    <AutoPatcher.StatDefInWorkerOut>
+        <defName>AP_StatDefInWorkerOut</defName>
+    </AutoPatcher.StatDefInWorkerOut>
+
+    <AutoPatcher.BeginDriver>
+        <defName>AP_BeginNode_StatWorker</defName>
+        <allDrivers>true</allDrivers>
+        <baseDriver>StatWorker</baseDriver>
     </AutoPatcher.BeginDriver>
 
     <AutoPatcher.BeginDef>
@@ -58,6 +110,7 @@
         <findPawn>false</findPawn>
     </AutoPatcher.StatSearch>
 
+    <!-- Action and Toil -->
     <AutoPatcher.ActionSearch>
         <defName>AP_ActionSearch</defName>
         <findDeep>true</findDeep>

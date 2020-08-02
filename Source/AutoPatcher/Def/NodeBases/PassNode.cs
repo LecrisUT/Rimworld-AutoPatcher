@@ -9,10 +9,12 @@
     {
         public PassNode()
         {
+            baseOutPorts = 1;
+            baseInPorts = 1;
             nOutPortGroups = 1;
             nInPortGroups = 1;
-            nOutPorts = nOutPortGroups * 1;
-            nInPorts = nInPortGroups * 1;
+            nOutPorts = nOutPortGroups * baseOutPorts;
+            nInPorts = nInPortGroups * baseInPorts;
         }
         protected override void CreateInputPortGroup(Node node, int group)
             => node.inputPorts.Add(new Port<inT>());

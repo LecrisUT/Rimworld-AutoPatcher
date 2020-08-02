@@ -10,7 +10,7 @@ using System.Collections;
 
 namespace AutoPatcher
 {
-    public class JobDriverSearchToil : SearchNode<Type, (Type type, Type ntype, MethodInfo action), (Type type, Type ntype, MethodInfo method), List<(int pos, List<MethodInfo> actions)>>
+    public class JobDriverSearchToil : SearchNode<Type, (Type type, Type ntype, MethodInfo action), (Type type, Type ntype, MethodInfo method), List<(int pos, int ToilIndex, List<MethodInfo> actions)>>
     {
         public override bool Perform(Node node)
         {
@@ -38,7 +38,7 @@ namespace AutoPatcher
                         var MoveNext = AccessTools.Method(nType, "MoveNext");
                         var get_Current = nType.GetInterfaceMap(typeof(IEnumerator<Toil>)).TargetMethods.First();
                         var Current = GetFieldInfo(get_Current);
-                        if (SearchMoveNext(MoveNext, Current, targetMethods, ToilGenerators, out List<(int pos, List<MethodInfo> actions)> SearchResults))
+                        if (SearchMoveNext(MoveNext, Current, targetMethods, ToilGenerators, out List<(int pos, int ToilIndex, List<MethodInfo> actions)> SearchResults))
                         {
                             foundPorts[0].AddData(type);
                             ResultA(foundPorts).AddData((type, nType, MoveNext));
@@ -98,16 +98,28 @@ namespace AutoPatcher
                 }
             return foundResult;
         }
-        public bool SearchMoveNext(MethodInfo searchMethod, FieldInfo Current, List<MethodInfo> ActionList, List<(MethodInfo generator, List<MethodInfo> actions)> ToilGenerators, out List<(int pos, List<MethodInfo> actions)> Results)
+        public bool SearchMoveNext(MethodInfo searchMethod, FieldInfo Current, List<MethodInfo> ActionList, List<(MethodInfo generator, List<MethodInfo> actions)> ToilGenerators, out List<(int pos, int ToilIndex, List<MethodInfo> actions)> Results)
         {
-            Results = new List<(int, List<MethodInfo>)>();
+            var test = new System.Text.StringBuilder($"TEst 0: {searchMethod}\n");
+            var test1 = new System.Text.StringBuilder($"TEst 1: {searchMethod}\n");
+            Results = new List<(int, int, List<MethodInfo>)>();
             var ActionsFound = new List<MethodInfo>();
             bool foundResult = false;
             bool flagFound = false;
+            int ToilIndex = 0;
+            bool foundDefault = false;
+            Label? retLabel = null;
+            Label[] otherLabels = new Label[0];
             var Action_ctor = AccessTools.Constructor(typeof(Action), new[] { typeof(object), typeof(IntPtr) });
             List<CodeInstruction> instructionList;
-            try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
-            catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
+            // try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
+            // catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
+            instructionList = PatchProcessor.GetCurrentInstructions(searchMethod);
+            for (int i = 0; i < instructionList.Count; i++)
+            {
+                CodeInstruction instruction = instructionList[i];
+                test1.AppendLine($"[{i}:{instruction.labels.Count}] {instruction.opcode} : [{instruction.operand?.GetType()}] {instruction.operand} :: [{instruction.opcode == OpCodes.Switch}]");
+            }
             for (int i = 0; i < instructionList.Count; i++)
             {
                 CodeInstruction instruction = instructionList[i];
@@ -130,12 +142,79 @@ namespace AutoPatcher
                 if (flagFound && instruction.StoresField(Current))
                 {
                     foundResult = true;
-                    Results.Add((i, ActionsFound));
+                    Results.Add((i, ToilIndex, ActionsFound));
+                    test.AppendLine($"Found Toil: [{i}] {ToilIndex}");
                     if (!FindAll)
                         return true;
                     ActionsFound = new List<MethodInfo>();
                     flagFound = false;
                 }
+                if (instruction.opcode == OpCodes.Switch)
+                {
+                    test.AppendLine($"Found Switch [{i}]");
+                    otherLabels = (Label[])instruction.operand;
+                    foreach (var tlabel in otherLabels)
+                    {
+                        for (int k = 0; k < instructionList.Count; k++)
+                        {
+                            var tInstruction = instructionList[k];
+                            if (tInstruction.labels.Contains(tlabel))
+                                test.AppendLine($"tlabel = {tlabel} [{k}]");
+                        }
+                    }
+                    for (int j = 1; j < instructionList.Count - i; j++)
+                    {
+                        var nextInstruction = instructionList[i + j];
+                        test.AppendLine($"[j={j}] {nextInstruction.opcode} : {nextInstruction.operand} :: {nextInstruction.opcode == OpCodes.Ret}");
+                        if (nextInstruction.opcode == OpCodes.Ret)
+                        {
+                            test.AppendLine($"Found default [{i + j}]");
+                            foundDefault = true;
+                            i += j;
+                            break;
+                        }
+                        if (nextInstruction.Branches(out var labelSwitch))
+                        {
+                            retLabel = labelSwitch;
+                            test.AppendLine($"Found default [{i + j}]: {retLabel.HasValue}");
+                            if (retLabel.HasValue)
+                            {
+                                for (int k = 0; k < instructionList.Count; k++)
+                                {
+                                    var tInstruction = instructionList[k];
+                                    if (tInstruction.labels.Contains(retLabel.Value))
+                                        test.AppendLine($"retLabel = {retLabel.Value} [{k}]");
+                                }
+                            }
+                            foundDefault = true;
+                            i += j;
+                            break;
+                        }
+                    }
+                }
+                if (instruction.Branches(out var label2))
+                {
+                    test.AppendLine($"Branches: [{i}]: {label2} [{label2.HasValue}]: {label2 == retLabel}");
+                    if (label2.HasValue && retLabel.HasValue)
+                        for (int k = 0; k < instructionList.Count; k++)
+                        {
+                            var tInstruction = instructionList[k];
+                            if (tInstruction.labels.Contains(label2.Value))
+                                test.AppendLine($"Label2 = {label2.Value} [{k}]");
+                        }
+                }
+
+                // if (foundDefault && instruction.opcode == OpCodes.Ret)
+                if (foundDefault && (instruction.opcode == OpCodes.Ret || (retLabel.HasValue && instruction.Branches(out var label) && label.Value == retLabel.Value)))
+                {
+                    ToilIndex++;
+                    test.AppendLine($"Inceased Index: [{i}] {ToilIndex}");
+                }
+            }
+            if (foundResult)
+            {
+                // Log.Message(test.ToString());
+                // Log.Message(test1.ToString());
             }
             return foundResult;
         }

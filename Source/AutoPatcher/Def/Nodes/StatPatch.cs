@@ -70,24 +70,50 @@ namespace AutoPatcher
         }
     }
     // HarmonyStat
-    public class HarmonyStat : StatPatch
+    public class HarmonyStat : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef, List<(int pos, StatDef stat)>>
     {
         private MethodInfo PrepareMethod;
         private HarmonyMethod Transpiler;
         private HarmonyMethod Prefix;
         private HarmonyMethod Postfix;
         private HarmonyMethod Finalizer;
+        private Type PatcherType;
+        private string PrepareMethodName;
+        private string TranspilerName;
+        private string PrefixName;
+        private string PostfixName;
+        private string FinalizerName;
+        public static bool successfull = true;
+        public override void Initialize()
+        {
+            base.Initialize();
+            PrepareMethod = PatcherType == null ? AccessTools.Method(PrepareMethodName) : AccessTools.Method(PatcherType, PrepareMethodName ?? "Prepare");
+            var method = PatcherType == null ? AccessTools.Method(TranspilerName) : AccessTools.Method(PatcherType, TranspilerName ?? "Transpiler");
+            if (method != null)
+                Transpiler = new HarmonyMethod(method);
+            method = PatcherType == null ? AccessTools.Method(PrefixName) : AccessTools.Method(PatcherType, PrefixName ?? "Prefix");
+            if (method != null)
+                Prefix = new HarmonyMethod(method);
+            method = PatcherType == null ? AccessTools.Method(PostfixName) : AccessTools.Method(PatcherType, PostfixName ?? "Postfix");
+            if (method != null)
+                Postfix = new HarmonyMethod(method);
+            method = PatcherType == null ? AccessTools.Method(FinalizerName) : AccessTools.Method(PatcherType, FinalizerName ?? "Finalizer");
+            if (method != null)
+                Finalizer = new HarmonyMethod(method);
+        }
         public override bool Perform(Node node)
         {
             if (!base.Perform(node))
                 return false;
             var TypeMethods = node.inputPorts[0].GetData<(Type type, Type ntype, MethodInfo method)>().ToList();
+            var PositionsList = InputA(node.inputPorts).GetData<List<(int pos, StatDef stat)>>().ToList();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
                 Type ntype = TypeMethods[i].ntype;
                 MethodInfo method = TypeMethods[i].method;
-                if (Helper_Prepare(type, ntype, method))
+                var positions = PositionsList[i];
+                if (Helper_Prepare(type, ntype, method, positions))
                 {
                     harmony.Patch(method, Prefix, Postfix, Transpiler, Finalizer);
                     if (successfull)
@@ -96,8 +122,8 @@ namespace AutoPatcher
             }
             return true;
         }
-        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method)
-            => PrepareMethod?.Invoke(null, new object[] { type, ntype, method }).ChangeType<bool>() ?? true;
+        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, List<(int pos, StatDef stat)> Positions)
+            => PrepareMethod?.Invoke(null, new object[] { type, ntype, method, Positions }).ChangeType<bool>() ?? true;
     }
     // AP_StatPatch
     public class AP_StatPatch : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef, List<(int pos, StatDef stat)>>
@@ -128,7 +154,7 @@ namespace AutoPatcher
                 MethodInfo method = TypeMethods[i].method;
                 Targets = targetCI[i];
                 List<StatDef> stats = Targets.ConvertAll(t => t.stat);
-                if (Helper_Prepare(type, ntype, method, stats))
+                if (HelperPrepare == null || Helper_Prepare(type, ntype, method, stats))
                 {
                     harmony.Patch(method, transpiler: thisTranspiler);
                     if (successfull)

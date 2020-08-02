@@ -101,7 +101,8 @@ namespace AutoPatcher
                 {
                     foreach (var inPort in inputPorts)
                     {
-                        if (inPort.DataType.IsAssignableFrom(outPort.DataType))
+                        if (outPort.DataType.IsAssignableFrom(inPort.DataType))
+                        // if (inPort.DataType.IsAssignableFrom(outPort.DataType))
                         {
                             var branch = new PatchTreeBranch()
                             {
