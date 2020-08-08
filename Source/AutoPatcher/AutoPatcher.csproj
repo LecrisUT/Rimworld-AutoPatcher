@@ -36,6 +36,9 @@
       <ExcludeAssets>runtime</ExcludeAssets>
       <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="MathParser.org-mXparser">
+      <Version>4.4.2</Version>
+    </PackageReference>
     <PackageReference Include="UnlimitedHugs.Rimworld.HugsLib">
       <Version>7.2.1</Version>
       <ExcludeAssets>runtime</ExcludeAssets>
@@ -55,6 +58,7 @@
     <Compile Include="Def\NodeBases\EndNode.cs" />
     <Compile Include="Def\NodeBases\BeginNode.cs" />
     <Compile Include="Def\Nodes\JobSearch.cs" />
+    <Compile Include="Def\Nodes\StatInject.cs" />
     <Compile Include="Def\Port.cs" />
     <Compile Include="Def\Nodes\ToilPatch.cs" />
     <Compile Include="Def\PatchTreeBranch.cs" />
@@ -62,6 +66,7 @@
     <Compile Include="Def\Nodes\ActionSearch.cs" />
     <Compile Include="Def\Nodes\ToilSearch.cs" />
     <Compile Include="Harmony\Patch_GenTypes.cs" />
+    <Compile Include="MiscClasses\Formula.cs" />
     <Compile Include="Node.cs" />
     <Compile Include="NodeUtility.cs" />
     <Compile Include="MainMod.cs" />

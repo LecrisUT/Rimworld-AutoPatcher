@@ -110,6 +110,11 @@
         <findPawn>false</findPawn>
     </AutoPatcher.StatSearch>
 
+    <AutoPatcher.StuffStatInject>
+        <defName>AP_StuffStatInject</defName>
+        <asFactor>true</asFactor>
+    </AutoPatcher.StuffStatInject>
+
     <!-- Action and Toil -->
     <AutoPatcher.ActionSearch>
         <defName>AP_ActionSearch</defName>
@@ -119,4 +124,11 @@
     <AutoPatcher.JobDriverSearchToil>
         <defName>AP_ToilSearch</defName>
     </AutoPatcher.JobDriverSearchToil>
+
+    <!-- ThingDef -->
+    <AutoPatcher.BeginDef>
+        <defName>AP_BeginNode_ThingDef</defName>
+        <allDefs>true</allDefs>
+        <defType>ThingDef</defType>
+    </AutoPatcher.BeginDef>
 </Defs>

@@ -68,4 +68,28 @@ namespace AutoPatcher
             return true;
         }
     }
+    public class BeginFormula : BeginNode<Formula>
+    {
+        private List<Formula> formulaList = new List<Formula>();
+        private bool initialized = true;
+        public override void Initialize()
+        {
+            base.Initialize();
+            foreach (var formula in formulaList)
+                initialized &= formula.Initialize();
+        }
+        public override bool Initialize(Node node)
+        {
+            if (!base.Initialize(node))
+                return false;
+            return initialized;
+        }
+        public override bool Perform(Node node)
+        {
+            if (!base.Perform(node))
+                return false;
+            node.outputPorts[0].SetData(formulaList);
+            return true;
+        }
+    }
 }

@@ -10,5 +10,5 @@ Source/AutoPatcher/ModName.csproj.user
 Source/AutoPatcher/obj
 Source/AutoPatcher/Properties/AssemblyInfo.cs
 AutoPatcher.rar
-1.1/Assemblies/AutoPatcher.pdb
-1.1/Assemblies/AutoPatcher.dll
+*/Assemblies/AutoPatcher.pdb
+*/Assemblies/AutoPatcher.dll
