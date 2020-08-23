@@ -5,16 +5,13 @@ using System.Collections.Generic;
 using RimWorld;
 using Verse;
 using HarmonyLib;
+using System.Reflection.Emit;
+using AutoPatcher.Utility;
 
 namespace AutoPatcher
 {
-    // Base StatPatch
-    public class StatPatch : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef>
-    {
-        protected static bool successfull = true;
-    }
     // ReplaceStat
-    public class ReplaceStat : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef, List<(int pos, StatDef stat)>>
+    public class ReplaceStat : MethodPatchNode<StatDef>
     {
         private Dictionary<StatDef, StatDef> replaceStat;
         private Dictionary<StatDef, FieldInfo> replaceStatField;
@@ -44,8 +41,8 @@ namespace AutoPatcher
             if (!base.Perform(node))
                 return false;
             HarmonyMethod transpiler = new HarmonyMethod(AccessTools.Method(typeof(ReplaceStat), "Transpiler"));
-            var TypeMethods = node.inputPorts[0].GetData<(Type type, Type ntype, MethodInfo method)>().ToList();
-            var targetCI = InputA(node.inputPorts).GetData<List<(int pos, StatDef stat)>>().ToList();
+            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
             replaceStatFieldStatic = replaceStatField;
             for (int i = 0; i < TypeMethods.Count; i++)
             {
@@ -70,7 +67,7 @@ namespace AutoPatcher
         }
     }
     // HarmonyStat
-    public class HarmonyStat : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef, List<(int pos, StatDef stat)>>
+    public class HarmonyStat : MethodPatchNode<StatDef>
     {
         private MethodInfo PrepareMethod;
         private HarmonyMethod Transpiler;
@@ -105,8 +102,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
-            var TypeMethods = node.inputPorts[0].GetData<(Type type, Type ntype, MethodInfo method)>().ToList();
-            var PositionsList = InputA(node.inputPorts).GetData<List<(int pos, StatDef stat)>>().ToList();
+            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var PositionsList = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
@@ -126,7 +123,7 @@ namespace AutoPatcher
             => PrepareMethod?.Invoke(null, new object[] { type, ntype, method, Positions }).ChangeType<bool>() ?? true;
     }
     // AP_StatPatch
-    public class AP_StatPatch : PatchNode<(Type type, Type ntype, MethodInfo method), StatDef, List<(int pos, StatDef stat)>>
+    public class AP_StatPatch : MethodPatchNode<StatDef>
     {
         private Type HelperType;
         private MethodInfo HelperPrepare;
@@ -145,8 +142,8 @@ namespace AutoPatcher
                 return false;
             HelperTranspileStatic = HelperTranspile;
             var thisTranspiler = new HarmonyMethod(AccessTools.Method(typeof(AP_StatPatch), "Transpiler"));
-            var TypeMethods = node.inputPorts[0].GetData<(Type type, Type ntype, MethodInfo method)>().ToList();
-            var targetCI = InputA(node.inputPorts).GetData<List<(int pos, StatDef stat)>>().ToList();
+            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
@@ -158,27 +155,45 @@ namespace AutoPatcher
                 {
                     harmony.Patch(method, transpiler: thisTranspiler);
                     if (successfull)
+                    {
+                        NodeUtility.RegisterOffset(method, Offsets);
                         SuccessfulPorts(node)[0].AddData(TypeMethods[i]);
+                    }
                 }
             }
             return true;
         }
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        private static List<(int pos, int offset)> Offsets;
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
             List<CodeInstruction> instructionList = instructions.ToList();
-            Targets.SortByDescending(t => t.pos);
+            Offsets = new List<(int, int)>();
+            Targets.SortBy(t => t.pos);
             successfull = false;
-            foreach ((int pos, StatDef stat) target in Targets)
+            foreach (var target in Targets)
             {
-                if (Helper_Transpile(ref instructionList, target.pos, target.stat))
+                int pos = target.pos;
+                foreach (var offset in Offsets)
+                    if (pos >= offset.pos)
+                        pos += offset.offset;
+                if (Helper_Transpile(ref instructionList, generator, pos, target.stat, out var offsets))
+                {
                     successfull = true;
+                    if (!offsets.NullOrEmpty())
+                        Offsets.AddRange(offsets);
+                }
             }
             if (!successfull)
                 return null;
             return instructionList;
         }
-        public static bool Helper_Transpile(ref List<CodeInstruction> instructions, int pos, StatDef stat)
-            => (bool)HelperTranspileStatic.Invoke(null, new object[] { instructions, pos, stat });
+        public static bool Helper_Transpile(ref List<CodeInstruction> instructions, ILGenerator generator, int pos, StatDef stat, out List<(int pos, int offset)> CIOffsets)
+        {
+            var param = new object[] { instructions, generator, pos, stat, null };
+            var res = (bool)HelperTranspileStatic.Invoke(null, param);
+            CIOffsets = (List<(int, int)>)param[4];
+            return res;
+        }
         public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, List<StatDef> stats)
             => (bool)HelperPrepare.Invoke(null, new object[] { type, ntype, method, stats });
     }

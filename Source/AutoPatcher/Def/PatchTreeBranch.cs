@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
 using Verse;
+using AutoPatcher.Utility;
 
 namespace AutoPatcher
 {
@@ -101,7 +102,7 @@ namespace AutoPatcher
                 {
                     foreach (var inPort in inputPorts)
                     {
-                        if (outPort.DataType.IsAssignableFrom(inPort.DataType))
+                        if (outPort.DataType.CanCastTo(inPort.DataType))
                         // if (inPort.DataType.IsAssignableFrom(outPort.DataType))
                         {
                             var branch = new PatchTreeBranch()

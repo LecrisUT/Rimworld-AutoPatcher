@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using HarmonyLib;
 using System;
 using System.Reflection;
+using Verse;
 
 namespace AutoPatcher
 {
-    public class PatchNode<TargetT, TargetTPos> : PassNode<(Type type, Type ntype, MethodInfo method), (Type type, Type ntype, MethodInfo method)>
+    public class DefPatchNode<T, TargetT> : PassNode<T, T> where T : Def
     {
-        protected override int baseInPorts => 3;
+        protected override int baseInPorts => 2;
+        protected override int baseOutPorts => 1;
+        protected override int nInPortGroups => 1;
         protected override int nOutPortGroups => 2;
-        public Harmony harmony = MainMod.harmony;
-        private string HarmonyName;
-
         public List<IPort> SuccessfulPorts(Node node)
             => node.outputPorts.GetRange(0, baseOutPorts);
         public List<IPort> FailedPorts(Node node)
@@ -21,15 +21,6 @@ namespace AutoPatcher
         {
             base.CreateInputPortGroup(node, group);
             node.inputPorts.Add(new Port<TargetT>());
-            node.inputPorts.Add(new Port<List<TargetTPos>>());
-        }
-        public override bool Initialize(Node node)
-        {
-            if (!base.Initialize(node))
-                return false;
-            if (HarmonyName != null)
-                harmony = new Harmony(HarmonyName);
-            return true;
         }
         public override bool PostPerform(Node node)
         {
@@ -40,7 +31,5 @@ namespace AutoPatcher
             FailedPorts(node)[0].SetData(data);
             return true;
         }
-        public IPort Target(List<IPort> ports) => ports[1];
-        public IPort TargetPos(List<IPort> ports) => ports[2];
     }
 }

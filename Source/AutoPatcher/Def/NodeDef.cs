@@ -1,18 +1,24 @@
 ﻿using System.Collections.Generic;
 using Verse;
 using AutoPatcher.Utility;
+using System.Reflection;
+using HarmonyLib;
+using System.Linq;
+using UnityEngine.VR;
+using System.CodeDom;
+using System;
 
 namespace AutoPatcher
 {
     public abstract class NodeDef : Def
     {
         // Ports and port groups for interfacing
-        protected int nOutPorts = 0;
-        protected int nInPorts = 0;
-        protected int baseOutPorts = 0;
-        protected int baseInPorts = 0;
-        protected int nOutPortGroups = 0;
-        protected int nInPortGroups = 0;
+        protected int nOutPorts => baseOutPorts * nOutPortGroups;
+        protected int nInPorts => baseInPorts * nInPortGroups;
+        protected virtual int baseOutPorts => 0;
+        protected virtual int baseInPorts => 0;
+        protected virtual int nOutPortGroups => 0;
+        protected virtual int nInPortGroups => 0;
         public NodeDef()
         {
             // Have to manually add to a list to access Initialize()
@@ -54,13 +60,13 @@ namespace AutoPatcher
             var DebugMessage = node.DebugMessage;
             var inputPorts = node.inputPorts;
             if (DebugLevel > 1)
-                DebugMessage.AppendLine($"Prepare Stage: From {node.printID}: Default method:");
+                DebugMessage.AppendLine($"Prepare Stage: From {node}: Default method:");
             if (DebugLevel > 2)
             {
                 DebugMessage.AppendLine("DataPassed:");
                 for (int i = 0; i < inputPorts.Count; i++)
                 {
-                    DebugMessage.AppendLine($"\nInput Port Data ({i}):");
+                    DebugMessage.AppendLine($"\nInput Port Data ({i}): {inputPorts[i].DataType}");
                     DebugMessage.Append(inputPorts[i].PrintData());
                     DebugMessage.AppendLine();
                 }
@@ -79,13 +85,13 @@ namespace AutoPatcher
             var DebugMessage = node.DebugMessage;
             var outputPorts = node.outputPorts;
             if (DebugLevel > 1)
-                DebugMessage.AppendLine($"Pass Stage: From {node.printID}: Default method:");
+                DebugMessage.AppendLine($"Pass Stage: From {node}: Default method:");
             if (DebugLevel > 2)
             {
                 DebugMessage.AppendLine("DataPassing:");
                 for (int i = 0; i < outputPorts.Count; i++)
                 {
-                    DebugMessage.AppendLine($"\nOutput Port Data ({i}):");
+                    DebugMessage.AppendLine($"\nOutput Port Data ({i}): {outputPorts[i].DataType}");
                     DebugMessage.Append(outputPorts[i].PrintData());
                     DebugMessage.AppendLine();
                 }
@@ -100,16 +106,23 @@ namespace AutoPatcher
                 Node nextNode = branch.inputNode;
                 IPort inputPort = branch.inputPort;
                 IPort outputPort = branch.outputPort;
-                if (!inputPort.DataType.IsAssignableFrom(outputPort.DataType))
+                if (!outputPort.DataType.CanCastTo(inputPort.DataType))
                 {
-                    Log.Warning($"[[LC]AutoPatcher] Warning couldn't pass from [{node.printID} : {node.outputPorts.IndexOf(outputPort)} : {outputPort.DataType}] to [{nextNode.printID} : {nextNode.inputPorts.IndexOf(inputPort)} : {inputPort.DataType}");
+                    Log.Warning($"[[LC]AutoPatcher] Warning couldn't pass from [{node} : {node.outputPorts.IndexOf(outputPort)} : {outputPort.DataType}] to [{nextNode} : {nextNode.inputPorts.IndexOf(inputPort)} : {inputPort.DataType}");
                     continue;
                 }
                 if (DebugLevel > 1)
-                    DebugMessage.AppendLine($"({node.outputPorts.IndexOf(branch.outputPort)} -> {nextNode.inputPorts.IndexOf(branch.inputPort)}) : {nextNode.printID}");
-                inputPort.AddData(outputPort.GetData());
+                    DebugMessage.AppendLine($"({node.outputPorts.IndexOf(branch.outputPort)} -> {nextNode.inputPorts.IndexOf(branch.inputPort)}) : {nextNode}");
+                var method = passMethod.MakeGenericMethod(outputPort.DataType);
+                method.Invoke(null, new object[] { outputPort, inputPort });
             }
             return true;
+        }
+        private static readonly MethodInfo passMethod = AccessTools.Method(typeof(NodeDef), nameof(NodeDef.PassPortData));
+        private static void PassPortData<outType>(IPort outPort, IPort inPort)
+        {
+            var data = outPort.GetData<outType>();
+            inPort.AddData(data);
         }
         // Finish stage: Final post process after passing data
         public virtual bool Finish(Node node) => true;

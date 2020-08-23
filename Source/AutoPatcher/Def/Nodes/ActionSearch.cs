@@ -15,9 +15,9 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
-            var input = node.inputPorts[0].GetData<Type>().ToList();
+            var input = node.inputPorts[0].GetDataList<Type>();
             var output = new List<Type>();
-            var targets = node.inputPorts[1].GetData<(Type type, Type ntype, MethodInfo method)>().ToList();
+            var targets = node.inputPorts[1].GetDataList<(Type type, Type ntype, MethodInfo method)>();
             var foundPorts = FoundPorts(node);
             foreach (var target in targets.ToList())
                 if (target.method.ReturnType == typeof(void))

@@ -5,7 +5,7 @@ using Verse;
 
 namespace AutoPatcher
 {
-    public class StuffStatInject : PatchNode<ThingDef,Formula>
+    public class StuffStatInject : DefPatchNode<ThingDef, Formula>
     {
         public bool skipNoStuff = true;
         public StuffProperties defaultStuffProperties;
@@ -18,7 +18,7 @@ namespace AutoPatcher
             if (!base.Perform(node))
                 return false;
             var tDefs = node.inputPorts[0].GetData<ThingDef>();
-            var formulas = node.inputPorts[1].GetData<Formula>().ToList();
+            var formulas = node.inputPorts[1].GetDataList<Formula>();
             var stats = formulas.SelectMany(t => t.inputs).ToList();
             stats.RemoveDuplicates();
             var outStats = formulas.Select(t=>t.output).ToList();

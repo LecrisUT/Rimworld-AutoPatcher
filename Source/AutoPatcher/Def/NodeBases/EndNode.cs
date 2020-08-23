@@ -4,26 +4,15 @@ namespace AutoPatcher
 {
     public abstract class EndNode<T> : NodeDef
     {
-        public EndNode()
-        {
-            baseInPorts = 1;
-            baseOutPorts = 0;
-            nOutPortGroups = 0;
-            nInPortGroups = 1;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 1;
+        protected override int nInPortGroups => 1;
         protected override void CreateInputPortGroup(Node node, int group)
             => node.inputPorts.Add(new Port<T>());
         protected IPort BaseInput(List<IPort> ports) => ports[0];
     }
     public abstract class EndNode<T,InputAT> : EndNode<T>
     {
-        public EndNode()
-        {
-            baseInPorts = 2;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 2;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);
@@ -33,11 +22,7 @@ namespace AutoPatcher
     }
     public abstract class EndNode<T, InputAT, InputBT> : EndNode<T, InputAT>
     {
-        public EndNode()
-        {
-            baseInPorts = 3;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 3;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);
@@ -47,11 +32,7 @@ namespace AutoPatcher
     }
     public abstract class EndNode<T, InputAT, InputBT, InputCT> : EndNode<T, InputAT, InputBT>
     {
-        public EndNode()
-        {
-            baseInPorts = 4;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 4;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);
@@ -61,11 +42,7 @@ namespace AutoPatcher
     }
     public abstract class EndNode<T, InputAT, InputBT, InputCT, InputDT> : EndNode<T, InputAT, InputBT, InputCT>
     {
-        public EndNode()
-        {
-            baseInPorts = 5;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 5;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);

@@ -6,15 +6,10 @@ namespace AutoPatcher
 {
     public abstract class SearchNode<InOutT, TargetT> : PassNode<InOutT, InOutT>
     {
-        public SearchNode()
-        {
-            baseInPorts = 2;
-            baseOutPorts = 2;
-            nOutPortGroups = 3;
-            nInPortGroups = 1;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-            nInPorts = nInPortGroups * baseInPorts;
-        }
+        protected override int baseInPorts => 2;
+        protected override int baseOutPorts => 2;
+        protected override int nInPortGroups => 1;
+        protected override int nOutPortGroups => 3;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);
@@ -38,7 +33,7 @@ namespace AutoPatcher
         {
             if (!base.PostPerform(node))
                 return false;
-            var data = node.inputPorts[0].GetData<InOutT>().ToList();
+            var data = node.inputPorts[0].GetDataList<InOutT>();
             FoundPorts(node)[0].GetData<InOutT>().Do(t => data.Remove(t));
             AmbiguousPorts(node)[0].GetData<InOutT>().Do(t => data.Remove(t));
             FailedPorts(node)[0].SetData(data);
@@ -47,11 +42,7 @@ namespace AutoPatcher
     }
     public abstract class SearchNode<InOutT, TargetT, ResultAT> : SearchNode<InOutT, TargetT>
     {
-        public SearchNode()
-        {
-            baseOutPorts = 3;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-        }
+        protected override int baseOutPorts => 3;
         protected override void CreateOutputPortGroup(Node node, int group)
         {
             base.CreateOutputPortGroup(node, group);
@@ -61,11 +52,7 @@ namespace AutoPatcher
     }
     public abstract class SearchNode<InOutT, TargetT, ResultAT, ResultBT> : SearchNode<InOutT, TargetT, ResultAT>
     {
-        public SearchNode()
-        {
-            baseOutPorts = 4;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-        }
+        protected override int baseOutPorts => 4;
         protected override void CreateOutputPortGroup(Node node, int group)
         {
             base.CreateOutputPortGroup(node, group);
@@ -75,11 +62,7 @@ namespace AutoPatcher
     }
     public abstract class SearchNode<InOutT, TargetT, ResultAT, ResultBT, ResultCT> : SearchNode<InOutT, TargetT, ResultAT, ResultBT>
     {
-        public SearchNode()
-        {
-            baseOutPorts = 5;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-        }
+        protected override int baseOutPorts => 5;
         protected override void CreateOutputPortGroup(Node node, int group)
         {
             base.CreateOutputPortGroup(node, group);
@@ -89,16 +72,22 @@ namespace AutoPatcher
     }
     public abstract class SearchNode<InOutT, TargetT, ResultAT, ResultBT, ResultCT, ResultDT> : SearchNode<InOutT, TargetT, ResultAT, ResultBT, ResultCT>
     {
-        public SearchNode()
-        {
-            baseOutPorts = 6;
-            nOutPorts = nOutPortGroups * baseOutPorts;
-        }
+        protected override int baseOutPorts => 6;
         protected override void CreateOutputPortGroup(Node node, int group)
         {
             base.CreateOutputPortGroup(node, group);
             node.outputPorts.Add(new Port<ResultDT>());
         }
         public IPort ResultD(List<IPort> ports) => ports[5];
+    }
+    public abstract class SearchNode<InOutT, TargetT, ResultAT, ResultBT, ResultCT, ResultDT, ResultET> : SearchNode<InOutT, TargetT, ResultAT, ResultBT, ResultCT, ResultDT>
+    {
+        protected override int baseOutPorts => 7;
+        protected override void CreateOutputPortGroup(Node node, int group)
+        {
+            base.CreateOutputPortGroup(node, group);
+            node.outputPorts.Add(new Port<ResultET>());
+        }
+        public IPort ResultE(List<IPort> ports) => ports[6];
     }
 }

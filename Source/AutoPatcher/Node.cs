@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Collections.Generic;
+using Verse;
 
 namespace AutoPatcher
 {
@@ -26,12 +27,20 @@ namespace AutoPatcher
         public int merging = 0;
         // Debug functions
         public int DebugLevel = 0;
-        public StringBuilder DebugMessage;
+        private StringBuilder debugMessage;
+        public StringBuilder DebugMessage
+        {
+            get
+            {
+                if (debugMessage == null)
+                    debugMessage = new StringBuilder($"[[LC]AutoPatcher] Debug Node : {this} : DebugLevel = {DebugLevel}\n");
+                return debugMessage;
+            }
+        }
         public Node()
         {
             index = count;
             count++;
-            DebugMessage = new StringBuilder($"[[LC]AutoPatcher] Debug Node : {printID} : DebugLevel = {DebugLevel}\n");
         }
         // Shortcut methods to the driver's methods
         public bool Initialize() => nodeDef.Initialize(this);
@@ -41,6 +50,7 @@ namespace AutoPatcher
         public bool Pass(IEnumerable<PatchTreeBranch> branches) => nodeDef.Pass(this, branches);
         public bool Finish() => nodeDef.Finish(this);
         public bool End() => nodeDef.End(this);
-        public string printID => $"[{index} : {name} : {nodeDef}]";
+        public override string ToString()
+            => $"[{nodeDef} : {index} : {name}]";
     }
 }

@@ -46,7 +46,7 @@ namespace AutoPatcher
             if (!base.Perform(node))
                 return false;
             if (allDefs)
-                node.outputPorts[0].SetData((NodeUtility.getDefListInfo.MakeGenericMethod(defType).Invoke(null, null) as List<Def>).Where(t => !defException.Contains(t)).ToList());
+                node.outputPorts[0].SetData(((List<Def>)NodeUtility.getDefListInfo.MakeGenericMethod(defType).Invoke(null, null)).Where(t => !defException.Contains(t)).ToList());
             else
                 node.outputPorts[0].SetData(defList);
             return true;

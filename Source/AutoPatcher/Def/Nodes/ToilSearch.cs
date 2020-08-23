@@ -7,19 +7,23 @@ using HarmonyLib;
 using System.Reflection.Emit;
 using Verse.AI;
 using System.Collections;
+using AutoPatcher.Utility;
 
 namespace AutoPatcher
 {
-    public class JobDriverSearchToil : SearchNode<Type, (Type type, Type ntype, MethodInfo action), (Type type, Type ntype, MethodInfo method), List<(int pos, int ToilIndex, List<MethodInfo> actions)>>
+    public class JobDriverSearchToil : SearchNode<Type, TypeMethod, TypeMethod,
+        List<(int pos, int ToilIndex, List<MethodInfo> actions)>,
+        List<EnumItemInfo>, List<MethodInfo>, EnumInfo>
     {
         public override bool Perform(Node node)
         {
             if (!base.Perform(node))
                 return false;
             var input = node.inputPorts[0].GetData<Type>();
-            var targets = node.inputPorts[1].GetData<(Type type, Type ntype, MethodInfo action)>().ToList();
+            // Action targets
+            var targets = node.inputPorts[1].GetDataList<TypeMethod>();
             var foundPorts = FoundPorts(node);
-            var targetMethods = targets.ConvertAll(t => t.action);
+            var targetMethods = targets.ConvertAll(t => t.method);
             var ToilGenerators = new List<(MethodInfo generator, List<MethodInfo> actions)>();
             // Search for Toil generators
             foreach (Type type in input)
@@ -37,34 +41,28 @@ namespace AutoPatcher
                         var interfaceMap = nType.GetInterfaceMap(typeof(IEnumerator));
                         var MoveNext = AccessTools.Method(nType, "MoveNext");
                         var get_Current = nType.GetInterfaceMap(typeof(IEnumerator<Toil>)).TargetMethods.First();
-                        var Current = GetFieldInfo(get_Current);
-                        if (SearchMoveNext(MoveNext, Current, targetMethods, ToilGenerators, out List<(int pos, int ToilIndex, List<MethodInfo> actions)> SearchResults))
+                        var Current =  GetFieldInfo(get_Current);
+                        var enumInfo = new EnumInfo(Current, null);
+                        if (SearchMoveNext(MoveNext, targetMethods, ToilGenerators, ref enumInfo, out var SearchResults, out var toilInfo))
                         {
                             foundPorts[0].AddData(type);
-                            ResultA(foundPorts).AddData((type, nType, MoveNext));
+                            ResultA(foundPorts).AddData(new TypeMethod(type, nType, MoveNext));
                             ResultB(foundPorts).AddData(SearchResults);
+                            ResultC(foundPorts).AddData(toilInfo);
+                            var actions = SearchResults.SelectMany(t => t.actions).ToList();
+                            actions.RemoveDuplicates();
+                            ResultD(foundPorts).AddData(actions);
+                            NodeUtility.enumerableItems.SetOrAdd(MoveNext, toilInfo);
+                            ResultE(foundPorts).AddData(enumInfo);
                         }
                         break;
                     }
                 }
             }
-            var foundActions = ResultB(foundPorts).GetData<List<(int pos, List<MethodInfo> actions)>> ().SelectMany(t => t.SelectMany(tt => tt.actions)).ToList();
+            var foundActions = ResultB(foundPorts).GetData<List<(int pos, int ToilIndex, List<MethodInfo> actions)>>().SelectMany(t => t.SelectMany(tt => tt.actions)).ToList();
             foundActions.RemoveDuplicates();
-            foundPorts[1].SetData(targets.Where(t=>foundActions.Contains(t.action)).ToList());
+            foundPorts[1].SetData(targets.Where(t=>foundActions.Contains(t.method)).ToList());
             return true;
-        }
-        private static bool IsBaseMethod(MethodInfo finalMethod, MethodInfo baseMethod)
-        {
-            MethodInfo currMethod = finalMethod;
-            MethodInfo prevMethod = null;
-            while (currMethod != prevMethod)
-            {
-                if (currMethod == baseMethod)
-                    return true;
-                prevMethod = currMethod;
-                currMethod = currMethod.GetBaseDefinition();
-            }
-            return false;
         }
         private static FieldInfo GetFieldInfo(MethodInfo getterMethod)
         {
@@ -79,6 +77,19 @@ namespace AutoPatcher
                     return instruction.operand as FieldInfo;
             }
             return null;
+        }
+        private static bool IsBaseMethod(MethodInfo finalMethod, MethodInfo baseMethod)
+        {
+            MethodInfo currMethod = finalMethod;
+            MethodInfo prevMethod = null;
+            while (currMethod != prevMethod)
+            {
+                if (currMethod == baseMethod)
+                    return true;
+                prevMethod = currMethod;
+                currMethod = currMethod.GetBaseDefinition();
+            }
+            return false;
         }
         private bool SearchToilGenerator(MethodInfo searchMethod, List<MethodInfo> ActionList, out List<MethodInfo> ActionsFound)
         {
@@ -98,125 +109,149 @@ namespace AutoPatcher
                 }
             return foundResult;
         }
-        public bool SearchMoveNext(MethodInfo searchMethod, FieldInfo Current, List<MethodInfo> ActionList, List<(MethodInfo generator, List<MethodInfo> actions)> ToilGenerators, out List<(int pos, int ToilIndex, List<MethodInfo> actions)> Results)
+        public bool SearchMoveNext(MethodInfo searchMethod, List<MethodInfo> ActionList, List<(MethodInfo generator, List<MethodInfo> actions)> ToilGenerators, ref EnumInfo enumInfo,
+            out List<(int pos, int toilIndex, List<MethodInfo> actions)> Results, out List<EnumItemInfo> toilInfo)
         {
-            var test = new System.Text.StringBuilder($"TEst 0: {searchMethod}\n");
-            var test1 = new System.Text.StringBuilder($"TEst 1: {searchMethod}\n");
+
             Results = new List<(int, int, List<MethodInfo>)>();
-            var ActionsFound = new List<MethodInfo>();
+            toilInfo = new List<EnumItemInfo>();
             bool foundResult = false;
-            bool flagFound = false;
-            int ToilIndex = 0;
-            bool foundDefault = false;
-            Label? retLabel = null;
-            Label[] otherLabels = new Label[0];
-            var Action_ctor = AccessTools.Constructor(typeof(Action), new[] { typeof(object), typeof(IntPtr) });
-            List<CodeInstruction> instructionList;
-            // try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
-            // catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
-            instructionList = PatchProcessor.GetCurrentInstructions(searchMethod);
+            bool foundSwitch = false;
+
+            var toilLabelPos = new Dictionary<Label, int>();
+            var instructionList = PatchProcessor.GetCurrentInstructions(searchMethod);
             for (int i = 0; i < instructionList.Count; i++)
             {
-                CodeInstruction instruction = instructionList[i];
-                test1.AppendLine($"[{i}:{instruction.labels.Count}] {instruction.opcode} : [{instruction.operand?.GetType()}] {instruction.operand} :: [{instruction.opcode == OpCodes.Switch}]");
-            }
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                CodeInstruction instruction = instructionList[i];
-                if (instruction.Is(OpCodes.Newobj, Action_ctor))
+                var instruction = instructionList[i];
+                // Get stateInfo: assume the first int field loaded is it.
+                if (instruction.IsLdarg(0))
                 {
-                    var prevInstruction = instructionList[i - 1];
-                    if (prevInstruction.opcode == OpCodes.Ldftn && prevInstruction.operand is MethodInfo method && 
-                        ActionList.Contains(method))
+                    var nextInstruction = instructionList[i + 1];
+                    if (nextInstruction.opcode == OpCodes.Ldfld && nextInstruction.operand is FieldInfo field && field.FieldType == typeof(int))
+                    {
+                        enumInfo.State = field;
+                        if (instructionList[i + 2].IsStloc())
+                            enumInfo.localState = instructionList[i + 2].ToLocalVar();
+                        continue;
+                    }
+                }
+                // Get the toil labels and index
+                if (instruction.opcode == OpCodes.Switch && loadsState(instructionList[i - 1], enumInfo))
+                {
+                    foundSwitch = true;
+                    var toilLabels = (Label[])instruction.operand;
+                    for (int j = i + 1; j < instructionList.Count; j++)
+                    {
+                        var currInstruction = instructionList[j];
+                        if (currInstruction.labels.NullOrEmpty())
+                            continue;
+                        bool found = false;
+                        foreach (var label in currInstruction.labels)
+                        {
+                            if (toilLabels.Contains(label))
+                            {
+                                found = true;
+                                toilLabelPos.Add(label, j);
+                            }
+                        }
+                        if (found && toilLabelPos.Count == toilLabels.Length)
+                            break;
+                    }
+                    break;
+                }
+                // Search branches
+                if (instruction.Branches(out var label2) && loadsState(instructionList[i - 1], enumInfo))
+                {
+                    for (int j = i + 1; j < instructionList.Count; j++)
+                    {
+                        var currInstruction = instructionList[j];
+                        if (!currInstruction.labels.NullOrEmpty() && currInstruction.labels.Contains(label2.Value))
+                        {
+                            toilLabelPos.Add(label2.Value, j);
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                // Assamptuion: first return or leave is default
+                if (instruction.opcode == OpCodes.Ret || instruction.opcode == OpCodes.Leave || instruction.opcode == OpCodes.Leave_S)
+                    break;
+            }
+            // Did not find Current
+            if (enumInfo.Current == null || toilLabelPos.EnumerableNullOrEmpty())
+            {
+                Log.Error($"[[LC]AutoPatcher]: TempError 8765499: {searchMethod.DeclaringType.DeclaringType} : {searchMethod.DeclaringType} : {searchMethod}\n" +
+                    $"{enumInfo.Current} : {toilLabelPos.Count}");
+                return false;
+            }
+            // No solution for method without Switch
+            if (!foundSwitch)
+                return false;
+            // Search each toil: Assume each one exits with Ret
+            int toilIndex = 0;
+            foreach (var labelPos in toilLabelPos)
+            {
+                bool flagFound = false;
+                var ActionsFound = new List<MethodInfo>();
+                for (int i = labelPos.Value; i < instructionList.Count; i++)
+                {
+                    var instruction = instructionList[i];
+                    // Action being saved into Toil
+                    if (instruction.Is(OpCodes.Newobj, Action_ctor))
+                    {
+                        var prevInstruction = instructionList[i - 1];
+                        if (prevInstruction.opcode == OpCodes.Ldftn && prevInstruction.operand is MethodInfo method &&
+                            ActionList.Contains(method))
+                        {
+                            flagFound = true;
+                            ActionsFound.Add(method);
+                            continue;
+                        }
+                    }
+                    // Action inside a ToilGenerator
+                    if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
+                        instruction.operand is MethodInfo calledMethod && ToilGenerators.Any(t => t.generator == calledMethod))
                     {
                         flagFound = true;
-                        ActionsFound.Add(method);
+                        ActionsFound.AddRange(ToilGenerators.First(t => t.generator == calledMethod).actions);
+                        continue;
                     }
-                }
-                if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
-                    instruction.operand is MethodInfo calledMethod && ToilGenerators.Any(t => t.generator == calledMethod))
-                {
-                    flagFound = true;
-                    ActionsFound.AddRange(ToilGenerators.First(t => t.generator == calledMethod).actions);
-                }
-                if (flagFound && instruction.StoresField(Current))
-                {
-                    foundResult = true;
-                    Results.Add((i, ToilIndex, ActionsFound));
-                    test.AppendLine($"Found Toil: [{i}] {ToilIndex}");
-                    if (!FindAll)
-                        return true;
-                    ActionsFound = new List<MethodInfo>();
-                    flagFound = false;
-                }
-                if (instruction.opcode == OpCodes.Switch)
-                {
-                    test.AppendLine($"Found Switch [{i}]");
-                    otherLabels = (Label[])instruction.operand;
-                    foreach (var tlabel in otherLabels)
+                    // Storing the Toil
+                    if (flagFound && instruction.StoresField(enumInfo.Current))
                     {
-                        for (int k = 0; k < instructionList.Count; k++)
-                        {
-                            var tInstruction = instructionList[k];
-                            if (tInstruction.labels.Contains(tlabel))
-                                test.AppendLine($"tlabel = {tlabel} [{k}]");
-                        }
+                        foundResult = true;
+                        Results.Add((i, toilIndex, ActionsFound));
+                        ActionsFound = new List<MethodInfo>();
+                        flagFound = false;
+                        continue;
                     }
-                    for (int j = 1; j < instructionList.Count - i; j++)
+                    // End of Toil
+                    if (instruction.opcode == OpCodes.Ret)
                     {
-                        var nextInstruction = instructionList[i + j];
-                        test.AppendLine($"[j={j}] {nextInstruction.opcode} : {nextInstruction.operand} :: {nextInstruction.opcode == OpCodes.Ret}");
-                        if (nextInstruction.opcode == OpCodes.Ret)
-                        {
-                            test.AppendLine($"Found default [{i + j}]");
-                            foundDefault = true;
-                            i += j;
-                            break;
-                        }
-                        if (nextInstruction.Branches(out var labelSwitch))
-                        {
-                            retLabel = labelSwitch;
-                            test.AppendLine($"Found default [{i + j}]: {retLabel.HasValue}");
-                            if (retLabel.HasValue)
-                            {
-                                for (int k = 0; k < instructionList.Count; k++)
-                                {
-                                    var tInstruction = instructionList[k];
-                                    if (tInstruction.labels.Contains(retLabel.Value))
-                                        test.AppendLine($"retLabel = {retLabel.Value} [{k}]");
-                                }
-                            }
-                            foundDefault = true;
-                            i += j;
-                            break;
-                        }
+                        toilInfo.Add(new EnumItemInfo(labelPos.Key, labelPos.Value, i));
+                        toilIndex++;
+                        break;
                     }
                 }
-                if (instruction.Branches(out var label2))
-                {
-                    test.AppendLine($"Branches: [{i}]: {label2} [{label2.HasValue}]: {label2 == retLabel}");
-                    if (label2.HasValue && retLabel.HasValue)
-                        for (int k = 0; k < instructionList.Count; k++)
-                        {
-                            var tInstruction = instructionList[k];
-                            if (tInstruction.labels.Contains(label2.Value))
-                                test.AppendLine($"Label2 = {label2.Value} [{k}]");
-                        }
-                }
-
-                // if (foundDefault && instruction.opcode == OpCodes.Ret)
-                if (foundDefault && (instruction.opcode == OpCodes.Ret || (retLabel.HasValue && instruction.Branches(out var label) && label.Value == retLabel.Value)))
-                {
-                    ToilIndex++;
-                    test.AppendLine($"Inceased Index: [{i}] {ToilIndex}");
-                }
-            }
-            if (foundResult)
-            {
-                // Log.Message(test.ToString());
-                // Log.Message(test1.ToString());
             }
             return foundResult;
+            bool loadsState(CodeInstruction instruction, EnumInfo info)
+                => instruction.LoadsField(info.State) || (info.localState != null && instruction.IsLdloc(info.localState));
         }
+        private static readonly ConstructorInfo Action_ctor = AccessTools.Constructor(typeof(Action), new[] { typeof(object), typeof(IntPtr) });
+        /*private static readonly List<FieldInfo> ActionFields = new List<FieldInfo>()
+        {
+            AccessTools.Field(typeof(Toil), nameof(Toil.preInitActions)),
+            AccessTools.Field(typeof(Toil), nameof(Toil.initAction)),
+            AccessTools.Field(typeof(Toil), nameof(Toil.preTickActions)),
+            AccessTools.Field(typeof(Toil), nameof(Toil.tickAction)),
+            AccessTools.Field(typeof(Toil), nameof(Toil.finishActions)),
+        };
+        private static readonly List<MethodInfo> AddActionMethods = new List<MethodInfo>()
+        {
+            AccessTools.Method(typeof(Toil), nameof(Toil.AddPreInitAction)),
+            AccessTools.Method(typeof(Toil), nameof(Toil.AddPreTickAction)),
+            AccessTools.Method(typeof(Toil), nameof(Toil.AddFinishAction)),
+        };*/
     }
 }

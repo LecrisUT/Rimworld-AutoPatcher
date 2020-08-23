@@ -10,8 +10,7 @@ namespace AutoPatcher
     {
         Type DataType { get; }
         IEnumerable<T> GetData<T>();
-        IEnumerable<object> GetData(Type T);
-        IEnumerable<object> GetData();
+        List<T> GetDataList<T>();
         void SetData<T>(List<T> value);
         void AddData<T>(T value);
         void AddData<T>(IEnumerable<T> value);

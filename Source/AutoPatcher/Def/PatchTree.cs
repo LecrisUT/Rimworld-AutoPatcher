@@ -73,8 +73,19 @@ namespace AutoPatcher
             EndNodes = EndNodes.Except(BubbleNodes).ToList();
             if (DebugLevel > 0)
             {
-                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: PatchTree: {defName}\n");
-                Branches.Do(t => DebugMessage.AppendLine($"({t.outputNode.printID} : {t.outputNode.outputPorts.IndexOf(t.outputPort)} : {t.outputPort.DataType}) -> ({t.inputNode.printID} : {t.inputNode.inputPorts.IndexOf(t.inputPort)} : {t.inputPort})"));
+                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: PatchTree: {defName} : Nodes:\n");
+                foreach (var node in Nodes)
+                {
+                    DebugMessage.AppendLine($"{node}\nInputPorts:");
+                    for (int i = 0; i < node.inputPorts.Count; i++)
+                        DebugMessage.AppendLine($"[{i}] {node.inputPorts[i].DataType}");
+                    DebugMessage.AppendLine("OutputPorts:");
+                    for (int i = 0; i < node.outputPorts.Count; i++)
+                        DebugMessage.AppendLine($"[{i}] {node.outputPorts[i].DataType}");
+                }
+                DebugMessage.AppendLine($"\nBranches:");
+                Branches.Do(t => DebugMessage.AppendLine($"({t.outputNode} : {t.outputNode.outputPorts.IndexOf(t.outputPort)} : {t.outputPort.DataType}) -> ({t.inputNode} : {t.inputNode.inputPorts.IndexOf(t.inputPort)} : {t.inputPort})"));
+                Log.Message(DebugMessage.ToString());
             }
             return true;
         }
