@@ -9,7 +9,7 @@ using System.Reflection.Emit;
 
 namespace AutoPatcher
 {
-    public class JobSearch : SearchNode<Type, JobDef, (Type type, Type ntype, MethodInfo method), List<(int pos, JobDef job)>>
+    public class JobSearch : SearchNode<Type, JobDef, TypeMethod, SavedList<ItemPos<JobDef>>>
     {
         protected bool findDeep = true;
         private List<FieldInfo> JobDefOfFieldInfo = new List<FieldInfo>();
@@ -41,6 +41,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetData<Type>();
             var foundPorts = FoundPorts(node);
             var ambiguousPorts = AmbiguousPorts(node);
@@ -50,20 +52,20 @@ namespace AutoPatcher
                 {
                     if (method.IsAbstract)
                         continue;
-                    if (SearchMethod(method, out List<(int pos, JobDef job)> searchResults))
+                    if (SearchMethod(method, out var searchResults))
                     {
-                        if (mergeAmbiguous || searchResults.Any(t => t.job != null))
+                        if (mergeAmbiguous || searchResults.Any(t => t.target != null))
                         {
-                            ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, null, method));
+                            ResultA(foundPorts).AddData((TypeMethod)(type, null, method));
                             if (mergeAmbiguous)
                                 ResultB(foundPorts).AddData(searchResults);
                             else
-                                ResultB(foundPorts).AddData(searchResults.Where(t => t.job != null).ToList());
+                                ResultB(foundPorts).AddData(searchResults.Where(t => t.target != null).ToList());
                         }
-                        if (!mergeAmbiguous && searchResults.Any(t => t.job == null))
+                        if (!mergeAmbiguous && searchResults.Any(t => t.target == null))
                         {
-                            ResultA(ambiguousPorts).AddData<(Type, Type, MethodInfo)>((type, null, method));
-                            ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.job == null).ToList());
+                            ResultA(ambiguousPorts).AddData((TypeMethod)(type, null, method));
+                            ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.target == null).ToList());
                         }
                     }
                 }
@@ -73,26 +75,26 @@ namespace AutoPatcher
                         {
                             if (method.IsAbstract)
                                 continue;
-                            if (SearchMethod(method, out List<(int pos, JobDef job)> searchResults))
+                            if (SearchMethod(method, out var searchResults))
                             {
-                                if (mergeAmbiguous || searchResults.Any(t => t.job != null))
+                                if (mergeAmbiguous || searchResults.Any(t => t.target != null))
                                 {
-                                    ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, nType, method));
+                                    ResultA(foundPorts).AddData((TypeMethod)(type, nType, method));
                                     if (mergeAmbiguous)
                                         ResultB(foundPorts).AddData(searchResults);
                                     else
-                                        ResultB(foundPorts).AddData(searchResults.Where(t => t.job != null).ToList());
+                                        ResultB(foundPorts).AddData(searchResults.Where(t => t.target != null).ToList());
                                 }
-                                if (!mergeAmbiguous && searchResults.Any(t => t.job == null))
+                                if (!mergeAmbiguous && searchResults.Any(t => t.target == null))
                                 {
-                                    ResultA(ambiguousPorts).AddData<(Type, Type, MethodInfo)>((type, nType, method));
-                                    ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.job == null).ToList());
+                                    ResultA(ambiguousPorts).AddData((TypeMethod)(type, nType, method));
+                                    ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.target == null).ToList());
                                 }
                             }
                         }
             }
-            var typeList = ResultA(foundPorts).GetData<(Type type, Type, MethodInfo)>().Select(t => t.type).ToList();
-            var jobList = ResultB(foundPorts).GetData<List<(int pos, JobDef job)>>().SelectMany(t => t.Select(tt => tt.job)).ToList();
+            var typeList = ResultA(foundPorts).GetData<TypeMethod>().Select(t => t.type).ToList();
+            var jobList = ResultB(foundPorts).GetData<List<ItemPos<JobDef>>>().SelectMany(t => t.Select(tt => tt.target)).ToList();
             typeList.RemoveDuplicates();
             jobList.RemoveDuplicates();
             foundPorts[0].SetData(typeList);
@@ -102,9 +104,9 @@ namespace AutoPatcher
             ambiguousPorts[0].SetData(typeList);
             return true;
         }
-        public virtual bool SearchMethod(MethodInfo searchMethod, out List<(int pos, JobDef job)> Results)
+        public virtual bool SearchMethod(MethodInfo searchMethod, out List<ItemPos<JobDef>> Results)
         {
-            Results = new List<(int pos, JobDef job)>();
+            Results = new List<ItemPos<JobDef>>();
             bool foundResult = false;
             List<CodeInstruction> instructionList;
             try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
@@ -119,14 +121,14 @@ namespace AutoPatcher
                     if (calledMethod.ReturnType == typeof(JobDef))
                     {
                         foundResult = true;
-                        Results.Add((i, null));
+                        Results.Add((ItemPos<JobDef>)(i, null));
                     }
                 }
                 // StatDefOf call
                 if (instruction.opcode == OpCodes.Ldsfld && instruction.operand is FieldInfo jobField &&
                     jobField.FieldType == typeof(JobDef) && JobDefOfFieldInfo.Contains(jobField))
                 {
-                    Results.Add((i, FieldToJob[jobField]));
+                    Results.Add((ItemPos<JobDef>)(i, FieldToJob[jobField]));
                     foundResult = true;
                 }
                 if (!FindAll && foundResult)

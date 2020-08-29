@@ -9,7 +9,7 @@ namespace AutoPatcher
     /// <summary>
     /// Patch tree
     /// </summary>
-    public class PatchTreeDef : Def
+    public class PatchTreeDef : Def, IExposable, ILoadReferenceable
     {
         /// <summary>
         /// All nodes of the PatchTree
@@ -43,17 +43,22 @@ namespace AutoPatcher
         /// Initialize the nodes and branches of the PatchTree
         /// </summary>
         /// <returns></returns>
-        public bool Initialize()
+        public bool Initialize(bool fromSave = false)
         {
-            // Initialize all nodes to create the ports
-            Nodes.Do(t => t.Initialize());
-            // Initialize and create all missing branches
-            foreach (PatchTreeBranch branch in Branches.ToList())
-                if (!branch.Initialize(this, Nodes))
-                {
-                    Log.Error($"[[LC]AutoPatcher] Failed to initialize branch {Branches.IndexOf(branch)} in PatchTree {defName}");
-                    return false;
-                }
+            if (fromSave)
+                Nodes.Do(t => t.fromSave = true);
+            else
+            {
+                // Initialize all nodes to create the ports
+                Nodes.Do(t => t.Initialize(this));
+                // Initialize and create all missing branches
+                foreach (PatchTreeBranch branch in Branches.ToList())
+                    if (!branch.Initialize(this, Nodes))
+                    {
+                        Log.Error($"[[LC]AutoPatcher] Failed to initialize branch {Branches.IndexOf(branch)} in PatchTree {defName}");
+                        return false;
+                    }
+            }
             var inputNodes = Branches.Select(t => t.inputNode).ToList();
             inputNodes.RemoveDuplicates();
             var outputNodes = Branches.Select(t => t.outputNode).ToList();
@@ -73,7 +78,7 @@ namespace AutoPatcher
             EndNodes = EndNodes.Except(BubbleNodes).ToList();
             if (DebugLevel > 0)
             {
-                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: PatchTree: {defName} : Nodes:\n");
+                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: PatchTree: {defName} : FromSave: {fromSave} : Nodes:\n");
                 foreach (var node in Nodes)
                 {
                     DebugMessage.AppendLine($"{node}\nInputPorts:");
@@ -112,6 +117,7 @@ namespace AutoPatcher
             inputNodes.RemoveDuplicates();
             node.Prepare();
             node.Perform();
+            node.PostPerform();
             node.Pass(branches);
             node.Finish();
             if (EndNodes.Contains(node))
@@ -126,5 +132,12 @@ namespace AutoPatcher
             foreach (var nextNode in inputNodes)
                 Perform(nextNode);
         }
+        public void ExposeData()
+        {
+            /*Scribe_Collections.Look(ref Branches, "Branches", LookMode.Deep);
+            Scribe_Collections.Look(ref Nodes, "Nodes", LookMode.Deep);*/
+        }
+        public string GetUniqueLoadID()
+            => defName;
     }
 }

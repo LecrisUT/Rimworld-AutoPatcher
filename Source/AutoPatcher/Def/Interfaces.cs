@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Verse;
 
 namespace AutoPatcher
 {
     /// <summary>
     /// General port interface
     /// </summary>
-    public interface IPort
+    public interface IPort : IExposable, ILoadReferenceable
     {
         Type DataType { get; }
         IEnumerable<T> GetData<T>();
@@ -16,6 +17,7 @@ namespace AutoPatcher
         void AddData<T>(IEnumerable<T> value);
         void Clear();
         string PrintData();
+        void RegisterPort(Node node, int portNumber, int portGroup);
     }
     /// <summary>
     /// Specific data port interface

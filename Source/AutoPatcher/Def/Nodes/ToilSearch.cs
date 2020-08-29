@@ -19,6 +19,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetData<Type>();
             // Action targets
             var targets = node.inputPorts[1].GetDataList<TypeMethod>();

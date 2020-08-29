@@ -46,6 +46,13 @@ namespace AutoPatcher.Utility
             if (typeof(T).IsAssignableFrom(typeof(Tobj)))
                 collection = (T)(object)obj;
         }
+        private static MethodInfo TryCastToList_Method = AccessTools.Method(typeof(CastUtility), "TryCastToList");
+        private static MethodInfo TryCastToObj_Method = AccessTools.Method(typeof(CastUtility), "TryCastToObj");
+        private static MethodInfo TryCastToEnumerable_Method = AccessTools.Method(typeof(CastUtility), "TryCastToEnumerable");
+        private static MethodInfo CastListToSavedList_Method = AccessTools.Method(typeof(CastUtility), "CastListToSavedList");
+        private static MethodInfo CastSavedListToList_Method = AccessTools.Method(typeof(CastUtility), "CastSavedListToList");
+        private static SavedList<T> CastListToSavedList<T>(List<T> obj) => (SavedList<T>)obj;
+        private static List<T> CastSavedListToList<T>(SavedList<T> obj) => obj;
         private static bool TryCastLoop<Tobj, T, listTobj, listT>(this listTobj objs, out listT vals, out bool res, bool all = false)
         {
             res = false;
@@ -54,15 +61,37 @@ namespace AutoPatcher.Utility
             {
                 var TobjType = typeof(Tobj).GetInterface(typeof(IList<>).Name).GenericTypeArguments.First();
                 var TType = typeof(T).GetInterface(typeof(IList<>).Name).GenericTypeArguments.First();
-                var method = AccessTools.Method(typeof(CastUtility), "TryCastToList", null,
-                    new Type[] { TobjType, TType });
+                MethodInfo methodTobj = null;
+                MethodInfo methodT = null;
+                var flagTobj = typeof(SavedList<>).MakeGenericType(TobjType).IsAssignableFrom(typeof(Tobj));
+                if (flagTobj)
+                    methodTobj = CastSavedListToList_Method.MakeGenericMethod(TobjType);
+                var flagT = typeof(SavedList<>).MakeGenericType(TType).IsAssignableFrom(typeof(T));
+                if (flagT)
+                    methodT = CastListToSavedList_Method.MakeGenericMethod(TType);
+                if (TobjType == TType && typeof(listT) == typeof(T) && typeof(listTobj) == typeof(Tobj))
+                {
+                    if (flagT)
+                        vals = (listT)methodT.Invoke(null, new object[] { objs });
+                    else
+                        vals = (listT)methodTobj.Invoke(null, new object[] { objs });
+                    res = true;
+                    return true;
+                }
+                var method = TryCastToList_Method.MakeGenericMethod(TobjType, TType);
                 foreach (var obj in objs as IList)
                 {
-                    var par = new object[] { obj, null, all };
+                    var Obj = obj;
+                    if (flagTobj)
+                        Obj = methodTobj.Invoke(null, new object[] { Obj });
+                    var par = new object[] { Obj, null, all };
                     var currRes = (bool)method.Invoke(null, par);
+                    var item = par[1];
+                    if (flagT)
+                        item = methodT.Invoke(null, new object[] { item });
                     res |= currRes;
                     if (currRes)
-                        AddItem(ref vals, (T)par[1]);
+                        AddItem(ref vals, (T)item);
                 }
                 return true;
             }
@@ -70,8 +99,7 @@ namespace AutoPatcher.Utility
             {
                 var TobjType = typeof(Tobj).GetInterface(typeof(IEnumerable<>).Name).GenericTypeArguments.First();
                 var TType = typeof(T).GetInterface(typeof(IEnumerable<>).Name).GenericTypeArguments.First();
-                var method = AccessTools.Method(typeof(CastUtility), "TryCastToEnumerable", null,
-                    new Type[] { TobjType, TType });
+                var method = TryCastToEnumerable_Method.MakeGenericMethod(TobjType, TType);
                 foreach (var obj in objs as IEnumerable)
                 {
                     var par = new object[] { obj, null, all };
@@ -218,8 +246,7 @@ namespace AutoPatcher.Utility
         #region Helper functions semi-generic
         public static bool TryCastTo<Tobj>(this Tobj obj, Type T, out object val, bool all = false)
         {
-            var method = AccessTools.Method(typeof(CastUtility), "TryCastToObj", null,
-                new Type[] { typeof(Tobj), T });
+            var method = TryCastToObj_Method.MakeGenericMethod(typeof(Tobj), T);
             var par = new object[] { obj, null, all };
             var res = (bool)method.Invoke(null, par);
             val = par[1];
@@ -227,8 +254,7 @@ namespace AutoPatcher.Utility
         }
         public static bool TryCastTo<Tobj>(this IEnumerable<Tobj> objs, Type T, out IEnumerable<object> val, bool all = false)
         {
-            var method = AccessTools.Method(typeof(CastUtility), "TryCastToEnumerable", null,
-                new Type[] { typeof(Tobj), T });
+            var method = TryCastToEnumerable_Method.MakeGenericMethod(typeof(Tobj), T);
             var par = new object[] { objs, null, all };
             var res = (bool)method.Invoke(null, par);
             val = ((IEnumerable)par[1])?.Cast<object>();
@@ -236,8 +262,7 @@ namespace AutoPatcher.Utility
         }
         public static bool TryCastTo<Tobj>(this List<Tobj> objs, Type T, out List<object> val, bool all = false)
         {
-            var method = AccessTools.Method(typeof(CastUtility), "TryCastToList", null,
-                new Type[] { typeof(Tobj), T });
+            var method = TryCastToList_Method.MakeGenericMethod(typeof(Tobj), T);
             var par = new object[] { objs, null, all };
             var res = (bool)method.Invoke(null, par);
             val = ((IEnumerable)par[1])?.Cast<object>()?.ToList() ?? new List<object>();

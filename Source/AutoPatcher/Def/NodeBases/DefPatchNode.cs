@@ -26,8 +26,8 @@ namespace AutoPatcher
         {
             if (!base.PostPerform(node))
                 return false;
-            var data = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            SuccessfulPorts(node)[0].GetData<(Type type, Type ntype, MethodInfo method)>().Do(t => data.Remove(t));
+            var data = node.inputPorts[0].GetDataList<T>();
+            SuccessfulPorts(node)[0].GetData<T>().Do(t => data.Remove(t));
             FailedPorts(node)[0].SetData(data);
             return true;
         }

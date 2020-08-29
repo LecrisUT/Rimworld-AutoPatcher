@@ -8,16 +8,18 @@ using System.Reflection.Emit;
 
 namespace AutoPatcher
 {
-    public class ActionSearch : SearchNode<Type, (Type, Type, MethodInfo), (Type, Type, MethodInfo), List<(int pos, MethodInfo method)>>
+    public class ActionSearch : SearchNode<Type, TypeMethod, TypeMethod, SavedList<ItemPos<MethodInfo>>>
     {
         protected bool findDeep = true;
         public override bool Perform(Node node)
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetDataList<Type>();
             var output = new List<Type>();
-            var targets = node.inputPorts[1].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var targets = node.inputPorts[1].GetDataList<TypeMethod>();
             var foundPorts = FoundPorts(node);
             foreach (var target in targets.ToList())
                 if (target.method.ReturnType == typeof(void))
@@ -25,7 +27,7 @@ namespace AutoPatcher
                     if (input.Contains(target.type))
                         output.AddDistinct(target.type);
                     ResultA(foundPorts).AddData(target);
-                    ResultB(foundPorts).AddData(new List<(int pos, MethodInfo method)>() { (-1, target.method) });
+                    ResultB(foundPorts).AddData(new List<ItemPos<MethodInfo>>() { (ItemPos<MethodInfo>)(-1, target.method) });
                 }
             var targetMethods = targets.ConvertAll(t => t.method);
             foreach (Type type in input)
@@ -34,11 +36,11 @@ namespace AutoPatcher
                 {
                     if (method.IsAbstract)
                         continue;
-                    if (SearchMethod(method, targetMethods, out List<(int pos, MethodInfo action)> searchResults))
+                    if (SearchMethod(method, targetMethods, out var searchResults))
                     {
                         output.AddDistinct(type);
-                        ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, null, method));
-                        ResultB(foundPorts).AddData(searchResults);
+                        ResultA(foundPorts).AddData((TypeMethod)(type, null, method));
+                        ResultB(foundPorts).AddData((SavedList<ItemPos<MethodInfo>>)searchResults);
                     }
                 }
                 if (findDeep)
@@ -47,23 +49,23 @@ namespace AutoPatcher
                         {
                             if (method.IsAbstract)
                                 continue;
-                            if (SearchMethod(method, targetMethods, out List<(int pos, MethodInfo action)> searchResults))
+                            if (SearchMethod(method, targetMethods, out var searchResults))
                             {
                                 output.AddDistinct(type);
-                                ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, nType, method));
-                                ResultB(foundPorts).AddData(searchResults);
+                                ResultA(foundPorts).AddData((TypeMethod)(type, nType, method));
+                                ResultB(foundPorts).AddData((SavedList<ItemPos<MethodInfo>>)searchResults);
                             }
                         }
             }
-            var actions = ResultB(foundPorts).GetData<List<(int pos, MethodInfo method)>>().SelectMany(t => t.Select(tt => tt.method)).ToList();
+            var actions = ResultB(foundPorts).GetData<List<ItemPos<MethodInfo>>>().SelectMany(t => t.Select(tt => tt.target)).ToList();
             actions.RemoveDuplicates();
             foundPorts[0].SetData(output);
             foundPorts[1].SetData(targets.Where(t => actions.Contains(t.method)).ToList());
             return true;
         }
-        public virtual bool SearchMethod(MethodInfo searchMethod, List<MethodInfo> targets, out List<(int pos, MethodInfo method)> Results)
+        public virtual bool SearchMethod(MethodInfo searchMethod, List<MethodInfo> targets, out List<ItemPos<MethodInfo>> Results)
         {
-            Results = new List<(int, MethodInfo)>();
+            Results = new List<ItemPos<MethodInfo>>();
             List<CodeInstruction> instructionList;
             try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
             catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
@@ -75,7 +77,7 @@ namespace AutoPatcher
                     instruction.operand is MethodInfo calledMethod && targets.Exists(t => IsBaseMethod(t, calledMethod)))
                 {
                     foundResult = true;
-                    Results.Add((i, calledMethod));
+                    Results.Add((ItemPos<MethodInfo>)(i, calledMethod));
                     if (!FindAll)
                         return true;
                 }

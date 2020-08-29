@@ -17,6 +17,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             if (allDrivers)
                 node.outputPorts[0].SetData(GenTypes.AllSubclasses(baseDriver).Where(t=>!driverException.Contains(t)).ToList());
             else
@@ -34,9 +36,11 @@ namespace AutoPatcher
         private List<string> defListName = new List<string>();
         protected override void CreateOutputPortGroup(Node node, int group)
             => node.outputPorts.Add((IPort)Activator.CreateInstance(typeof(Port<>).MakeGenericType(defType)));
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
-            base.Initialize();
+            base.Initialize(fromSave);
+            if (fromSave)
+                return;
             var allDefs = NodeUtility.getDefListInfo.MakeGenericMethod(defType).Invoke(null, null) as List<Def>;
             defListName.Do(t => defList.Add(allDefs.First(tt => tt.defName == t)));
             defExceptionName.Do(t => defException.Add(allDefs.First(tt => tt.defName == t)));
@@ -45,6 +49,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             if (allDefs)
                 node.outputPorts[0].SetData(((List<Def>)NodeUtility.getDefListInfo.MakeGenericMethod(defType).Invoke(null, null)).Where(t => !defException.Contains(t)).ToList());
             else
@@ -61,6 +67,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             if (allDefs)
                 node.outputPorts[0].SetData(DefDatabase<T>.AllDefsListForReading.Where(t => !defException.Contains(t)).ToList());
             else
@@ -72,9 +80,11 @@ namespace AutoPatcher
     {
         private List<Formula> formulaList = new List<Formula>();
         private bool initialized = true;
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
-            base.Initialize();
+            base.Initialize(fromSave);
+            if (fromSave)
+                return;
             foreach (var formula in formulaList)
                 initialized &= formula.Initialize();
         }
@@ -88,6 +98,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             node.outputPorts[0].SetData(formulaList);
             return true;
         }

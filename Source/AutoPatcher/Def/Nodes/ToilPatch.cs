@@ -25,9 +25,9 @@ namespace AutoPatcher
         private string PostfixName;
         private string FinalizerName;
         public static bool successfull = true;
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
-            base.Initialize();
+            base.Initialize(fromSave);
             PrepareMethod = PatcherType == null ? AccessTools.Method(PrepareMethodName) : AccessTools.Method(PatcherType, PrepareMethodName ?? "Prepare");
             var method = PatcherType == null ? AccessTools.Method(TranspilerName) : AccessTools.Method(PatcherType, TranspilerName ?? "Transpiler");
             if (method != null)
@@ -102,7 +102,7 @@ namespace AutoPatcher
         private static MethodInfo HelperTranspileStatic;
         private static List<(int pos, int ToilIndex, List<MethodInfo> actions)> Targets;
         protected static bool successfull = true;
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
             HelperPrepare = AccessTools.Method(HelperType, "Prepare");
             HelperTranspile = AccessTools.Method(HelperType, "Transpile");

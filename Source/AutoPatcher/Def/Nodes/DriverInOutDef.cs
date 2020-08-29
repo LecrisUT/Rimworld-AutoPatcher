@@ -13,6 +13,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetData<Type>();
             var output = DefDatabase<T>.AllDefs;
             if (includeDerived)
@@ -31,6 +33,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetData<T>();
             var output = input.Select(t => DefToDriver(t));
             node.outputPorts[0].SetData(output.ToList());

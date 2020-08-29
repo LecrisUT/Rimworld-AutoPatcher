@@ -1,12 +1,9 @@
-﻿using System.Linq;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using HarmonyLib;
-using System;
-using System.Reflection;
 
 namespace AutoPatcher
 {
-    public class PatchNode<TargetT, TargetTPos> : PassNode<(Type type, Type ntype, MethodInfo method), (Type type, Type ntype, MethodInfo method)>
+    public class PatchNode<TargetT, TargetTPos> : PassNode<TypeMethod, TypeMethod>
     {
         protected override int baseInPorts => 3;
         protected override int nOutPortGroups => 2;
@@ -21,7 +18,7 @@ namespace AutoPatcher
         {
             base.CreateInputPortGroup(node, group);
             node.inputPorts.Add(new Port<TargetT>());
-            node.inputPorts.Add(new Port<List<TargetTPos>>());
+            node.inputPorts.Add(new Port<SavedList<TargetTPos>>());
         }
         public override bool Initialize(Node node)
         {
@@ -35,8 +32,8 @@ namespace AutoPatcher
         {
             if (!base.PostPerform(node))
                 return false;
-            var data = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            SuccessfulPorts(node)[0].GetData<(Type type, Type ntype, MethodInfo method)>().Do(t => data.Remove(t));
+            var data = node.inputPorts[0].GetDataList<TypeMethod>();
+            SuccessfulPorts(node)[0].GetData<TypeMethod>().Do(t => data.Remove(t));
             FailedPorts(node)[0].SetData(data);
             return true;
         }

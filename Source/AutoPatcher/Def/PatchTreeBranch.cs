@@ -5,8 +5,9 @@ using AutoPatcher.Utility;
 
 namespace AutoPatcher
 {
-    public class PatchTreeBranch
+    public class PatchTreeBranch : IExposable
     {
+        public PatchTreeDef patchTree;
         public Node inputNode;
         public Node outputNode;
         public IPort inputPort;
@@ -21,8 +22,14 @@ namespace AutoPatcher
         private int outputPortInd = -1;
         private int inputPortGroup = -1;
         private int outputPortGroup = -1;
+        public PatchTreeBranch() { }
+        public PatchTreeBranch(PatchTreeDef patchTree)
+        {
+            this.patchTree = patchTree;
+        }
         public bool Initialize(PatchTreeDef patchTree, List<Node> list)
         {
+            this.patchTree = patchTree;
             if (inputNode == null)
             {
                 if (inputNodeName != null)
@@ -105,7 +112,7 @@ namespace AutoPatcher
                         if (outPort.DataType.CanCastTo(inPort.DataType))
                         // if (inPort.DataType.IsAssignableFrom(outPort.DataType))
                         {
-                            var branch = new PatchTreeBranch()
+                            var branch = new PatchTreeBranch(patchTree)
                             {
                                 inputNode = inputNode,
                                 outputNode = outputNode,
@@ -131,6 +138,14 @@ namespace AutoPatcher
                     outputPort = outputNode.outputPortGroups[outputPortGroup][outputPortInd];
             }
             return true;
+        }
+        public void ExposeData()
+        {
+            /*Scribe_Defs.Look(ref patchTree, "patchTree");
+            Scribe_References.Look(ref inputNode, "inputNode");
+            Scribe_References.Look(ref outputNode, "outputNode");
+            Scribe_References.Look(ref inputPort, "inputPort");
+            Scribe_References.Look(ref outputPort, "outputPort");*/
         }
     }
 }

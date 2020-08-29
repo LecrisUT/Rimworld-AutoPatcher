@@ -7,7 +7,7 @@ namespace AutoPatcher
     /// <summary>
     /// Basic node object
     /// </summary>
-    public class Node
+    public class Node : IExposable, ILoadReferenceable
     {
         /// <summary>
         /// Global index for quick index creation
@@ -15,6 +15,7 @@ namespace AutoPatcher
         public static int count = 0;
         // Node driver and port interfaces
         public NodeDef nodeDef;
+        public PatchTreeDef patchTree;
         public List<IPort> inputPorts;
         public List<IPort> outputPorts;
         public List<List<IPort>> inputPortGroups;
@@ -22,6 +23,7 @@ namespace AutoPatcher
         // Sepcific index and name of the node
         public int index;
         public string name;
+        public bool fromSave = false;
         // Index for how many branches are merging into this node
         public int current = 0;
         public int merging = 0;
@@ -42,8 +44,17 @@ namespace AutoPatcher
             index = count;
             count++;
         }
+        public Node(int index, string name)
+        {
+            this.index = index;
+            this.name = name;
+        }
         // Shortcut methods to the driver's methods
-        public bool Initialize() => nodeDef.Initialize(this);
+        public bool Initialize(PatchTreeDef patchTree)
+        {
+            this.patchTree = patchTree;
+            return nodeDef.Initialize(this);
+        }
         public bool Prepare() => nodeDef.Prepare(this);
         public bool Perform() => nodeDef.Perform(this);
         public bool PostPerform() => nodeDef.PostPerform(this);
@@ -51,6 +62,16 @@ namespace AutoPatcher
         public bool Finish() => nodeDef.Finish(this);
         public bool End() => nodeDef.End(this);
         public override string ToString()
-            => $"[{nodeDef} : {index} : {name}]";
+            => $"[{name ?? (nodeDef.ToString() + index)}]";
+        public void ExposeData()
+        {
+            /*Scribe_Collections.Look(ref outputPorts, "outputPorts", LookMode.Deep);
+            Scribe_Values.Look(ref index, "index");
+            Scribe_Values.Look(ref name, "name");
+            Scribe_Defs.Look(ref patchTree, "patchTree");*/
+        }
+
+        public string GetUniqueLoadID()
+            => patchTree.GetUniqueLoadID() + "_Node" + index;
     }
 }

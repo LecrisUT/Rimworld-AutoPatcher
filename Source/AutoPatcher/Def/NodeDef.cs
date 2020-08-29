@@ -28,7 +28,7 @@ namespace AutoPatcher
         protected virtual void CreateInputPortGroup(Node node, int group) { }
         protected virtual void CreateOutputPortGroup(Node node, int group) { }
         // Globally initialize the NodeDef
-        public virtual void Initialize() { }
+        public virtual void Initialize(bool fromSave=false) { }
         // Initialize stage: Create the ports for the node
         public virtual bool Initialize(Node node)
         {
@@ -41,15 +41,21 @@ namespace AutoPatcher
             node.inputPortGroups = new List<List<IPort>>(nInPortGroups);
             for (int i = 0; i < nInPortGroups; i++)
             {
+                // Log.Message($"Test 0: {this} : {i}/{nInPortGroups} : {baseInPorts}");
                 CreateInputPortGroup(node, i);
                 node.inputPortGroups.Add(node.inputPorts.GetRange(i * baseInPorts, baseInPorts));
+                for (int j = 0; j < baseInPorts; j++)
+                    node.inputPortGroups[i][j].RegisterPort(node, i * baseInPorts + j, i);
             };
             node.outputPorts = new List<IPort>(nOutPorts);
             node.outputPortGroups = new List<List<IPort>>(nOutPortGroups);
             for (int i = 0; i < nOutPortGroups; i++)
             {
+                // Log.Message($"Test 1: {this} : {i}/{nOutPortGroups} : {baseOutPorts}");
                 CreateOutputPortGroup(node, i);
                 node.outputPortGroups.Add(node.outputPorts.GetRange(i * baseOutPorts, baseOutPorts));
+                for (int j = 0; j < baseOutPorts; j++)
+                    node.outputPortGroups[i][j].RegisterPort(node, i * baseOutPorts + j, i);
             }
             return true;
         }

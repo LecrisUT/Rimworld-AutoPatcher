@@ -17,8 +17,8 @@ namespace AutoPatcher
         private Dictionary<StatDef, FieldInfo> replaceStatField;
         private static Dictionary<StatDef, FieldInfo> replaceStatFieldStatic;
         protected static bool successfull = true;
-        private static List<(int pos, StatDef stat)> Targets;
-        public override void Initialize()
+        private static List<ItemPos<StatDef>> Targets;
+        public override void Initialize(bool fromSave = false)
         {
             if (!replaceStatField.EnumerableNullOrEmpty())
                 return;
@@ -41,8 +41,8 @@ namespace AutoPatcher
             if (!base.Perform(node))
                 return false;
             HarmonyMethod transpiler = new HarmonyMethod(AccessTools.Method(typeof(ReplaceStat), "Transpiler"));
-            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
+            var TypeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<ItemPos<StatDef>>>();
             replaceStatFieldStatic = replaceStatField;
             for (int i = 0; i < TypeMethods.Count; i++)
             {
@@ -81,9 +81,9 @@ namespace AutoPatcher
         private string PostfixName;
         private string FinalizerName;
         public static bool successfull = true;
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
-            base.Initialize();
+            base.Initialize(fromSave);
             PrepareMethod = PatcherType == null ? AccessTools.Method(PrepareMethodName) : AccessTools.Method(PatcherType, PrepareMethodName ?? "Prepare");
             var method = PatcherType == null ? AccessTools.Method(TranspilerName) : AccessTools.Method(PatcherType, TranspilerName ?? "Transpiler");
             if (method != null)
@@ -102,8 +102,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
-            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            var PositionsList = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
+            var TypeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
+            var PositionsList = TargetPos(node.inputPorts).GetDataList<List<ItemPos<StatDef>>>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
@@ -119,7 +119,7 @@ namespace AutoPatcher
             }
             return true;
         }
-        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, List<(int pos, StatDef stat)> Positions)
+        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, List<ItemPos<StatDef>> Positions)
             => PrepareMethod?.Invoke(null, new object[] { type, ntype, method, Positions }).ChangeType<bool>() ?? true;
     }
     // AP_StatPatch
@@ -129,9 +129,9 @@ namespace AutoPatcher
         private MethodInfo HelperPrepare;
         private MethodInfo HelperTranspile;
         private static MethodInfo HelperTranspileStatic;
-        private static List<(int pos, StatDef stat)> Targets;
+        private static List<ItemPos<StatDef>> Targets;
         protected static bool successfull = true;
-        public override void Initialize()
+        public override void Initialize(bool fromSave = false)
         {
             HelperPrepare = AccessTools.Method(HelperType, "Prepare");
             HelperTranspile = AccessTools.Method(HelperType, "Transpile");
@@ -142,15 +142,15 @@ namespace AutoPatcher
                 return false;
             HelperTranspileStatic = HelperTranspile;
             var thisTranspiler = new HarmonyMethod(AccessTools.Method(typeof(AP_StatPatch), "Transpiler"));
-            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, StatDef stat)>>();
+            var TypeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<ItemPos<StatDef>>>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
                 Type ntype = TypeMethods[i].ntype;
                 MethodInfo method = TypeMethods[i].method;
                 Targets = targetCI[i];
-                List<StatDef> stats = Targets.ConvertAll(t => t.stat);
+                List<StatDef> stats = Targets.ConvertAll(t => t.target);
                 if (HelperPrepare == null || Helper_Prepare(type, ntype, method, stats))
                 {
                     harmony.Patch(method, transpiler: thisTranspiler);
@@ -176,7 +176,7 @@ namespace AutoPatcher
                 foreach (var offset in Offsets)
                     if (pos >= offset.pos)
                         pos += offset.offset;
-                if (Helper_Transpile(ref instructionList, generator, pos, target.stat, out var offsets))
+                if (Helper_Transpile(ref instructionList, generator, pos, target.target, out var offsets))
                 {
                     successfull = true;
                     if (!offsets.NullOrEmpty())

@@ -8,20 +8,20 @@ using System.Reflection.Emit;
 
 namespace AutoPatcher
 {
-    public class EnumerableMethodPatchNode<TargetT> : PatchNode<TargetT, (int index, int pos, TargetT target)>
+    public class EnumerableMethodPatchNode<TargetT> : PatchNode<TargetT, EnumItemPos<TargetT>>
     {
         protected override int baseInPorts => 4;
         protected override void CreateInputPortGroup(Node node, int group)
         {
             base.CreateInputPortGroup(node, group);
-            node.inputPorts.Add(new Port<(FieldInfo Current, FieldInfo switchField, LocalVar local)>());
+            node.inputPorts.Add(new Port<EnumInfo>());
         }
         public IPort EnumInfo(List<IPort> ports) => ports[3];
         public override bool Prepare(Node node)
         {
-            var typeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var typeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
             var methods = typeMethods.ConvertAll(t => t.method);
-            var targets = node.inputPorts[2].GetDataList<List<(int index, int pos, TargetT target)>>();
+            var targets = node.inputPorts[2].GetDataList<SavedList<EnumItemPos<TargetT>>>();
             for (int i = 0; i < methods.Count; i++)
             {
                 var method = methods[i];
@@ -40,7 +40,7 @@ namespace AutoPatcher
                         foreach (var offset in enumerableOffsets.Where(t => targetInd >= t.pos))
                             if (targetInd >= offset.pos)
                                 targetInd += offset.offset;
-                    targets[i][j] = (targetInd, targetPos, target.target);
+                    targets[i][j] = new EnumItemPos<TargetT>(targetInd, targetPos, target.target);
                 }
             }
             node.inputPorts[2].SetData(targets);

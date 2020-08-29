@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Verse;
 using HarmonyLib;
 using AutoPatcher.Utility;
+using System.Collections;
 
 namespace AutoPatcher
 {
@@ -20,6 +21,15 @@ namespace AutoPatcher
     /// <typeparam name="dataT">data type of the port</typeparam>
     public class Port<dataT> : Port, IPort<dataT>
     {
+        public Node node;
+        public int portNumber;
+        public int portGroup;
+        public void RegisterPort(Node node, int portNumber, int portGroup)
+        {
+            this.node = node;
+            this.portNumber = portNumber;
+            this.portGroup = portGroup;
+        }
         public Type DataType { get => typeof(dataT); }
         public List<dataT> data = new List<dataT>();
         // Temporary setup: Force new data to be added instead of overriding.
@@ -99,6 +109,16 @@ namespace AutoPatcher
             builder.Length -= 2;
             return builder.ToString();
         }
+
+        public void ExposeData()
+        {
+            /*Scribe_Collections.Look(ref data, "data", LookMode.Undefined);
+            Scribe_References.Look(ref node, "node");
+            Scribe_Values.Look(ref portNumber, "portNumber");
+            Scribe_Values.Look(ref portGroup, "portGroup");*/
+        }
+        public string GetUniqueLoadID()
+            => node.GetUniqueLoadID() + "_Port" + portNumber;
         // Future work: Change how PrintData performs for List and tuple.
         /*public static bool IsTuple(Type tuple)
         {

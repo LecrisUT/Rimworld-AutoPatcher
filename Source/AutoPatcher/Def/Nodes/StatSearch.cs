@@ -6,10 +6,11 @@ using RimWorld;
 using Verse;
 using HarmonyLib;
 using System.Reflection.Emit;
+using Mono.Posix;
 
 namespace AutoPatcher
 {
-    public class StatSearch : SearchNode<Type, StatDef, (Type type, Type ntype, MethodInfo method), List<(int pos, StatDef stat)>>
+    public class StatSearch : SearchNode<Type, StatDef, TypeMethod, List<ItemPos<StatDef>>>
     {
         protected bool findPawn = false;
         protected bool findDeep = true;
@@ -42,6 +43,8 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
+            if (node.fromSave)
+                return true;
             var input = node.inputPorts[0].GetData<Type>();
             var foundPorts = FoundPorts(node);
             var ambiguousPorts = AmbiguousPorts(node);
@@ -51,22 +54,22 @@ namespace AutoPatcher
                 {
                     if (method.IsAbstract)
                         continue;
-                    if (SearchMethod(method, out List<(int pos, StatDef stat)> searchResults, out List<CodeInstruction> PawnIns))
+                    if (SearchMethod(method, out var searchResults, out List<CodeInstruction> PawnIns))
                     {
                         /*if (findPawn)
                             PawnInstructions.Add(PawnIns);*/
-                        if (mergeAmbiguous || searchResults.Any(t => t.stat != null))
+                        if (mergeAmbiguous || searchResults.Any(t => t.target != null))
                         {
-                            ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, null, method));
+                            ResultA(foundPorts).AddData((TypeMethod)(type, null, method));
                             if (mergeAmbiguous)
                                 ResultB(foundPorts).AddData(searchResults);
                             else
-                                ResultB(foundPorts).AddData(searchResults.Where(t => t.stat != null).ToList());
+                                ResultB(foundPorts).AddData(searchResults.Where(t => t.target != null).ToList());
                         }
-                        if (!mergeAmbiguous && searchResults.Any(t => t.stat == null))
+                        if (!mergeAmbiguous && searchResults.Any(t => t.target == null))
                         {
-                            ResultA(ambiguousPorts).AddData<(Type, Type, MethodInfo)>((type, null, method));
-                            ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.stat == null).ToList());
+                            ResultA(ambiguousPorts).AddData((TypeMethod)(type, null, method));
+                            ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.target == null).ToList());
                         }
                     }
                 }
@@ -76,40 +79,40 @@ namespace AutoPatcher
                         {
                             if (method.IsAbstract)
                                 continue;
-                            if (SearchMethod(method, out List<(int pos, StatDef stat)> searchResults, out List<CodeInstruction> PawnIns))
+                            if (SearchMethod(method, out var searchResults, out List<CodeInstruction> PawnIns))
                             {
                                 /*if (findPawn)
                                     PawnInstructions.Add(PawnIns);*/
-                                if (mergeAmbiguous || searchResults.Any(t => t.stat != null))
+                                if (mergeAmbiguous || searchResults.Any(t => t.target != null))
                                 {
-                                    ResultA(foundPorts).AddData<(Type, Type, MethodInfo)>((type, nType, method));
+                                    ResultA(foundPorts).AddData((TypeMethod)(type, nType, method));
                                     if (mergeAmbiguous)
                                         ResultB(foundPorts).AddData(searchResults);
                                     else
-                                        ResultB(foundPorts).AddData(searchResults.Where(t => t.stat != null).ToList());
+                                        ResultB(foundPorts).AddData(searchResults.Where(t => t.target != null).ToList());
                                 }
-                                if (!mergeAmbiguous && searchResults.Any(t => t.stat == null))
+                                if (!mergeAmbiguous && searchResults.Any(t => t.target == null))
                                 {
-                                    ResultA(ambiguousPorts).AddData<(Type, Type, MethodInfo)>((type, nType, method));
-                                    ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.stat == null).ToList());
+                                    ResultA(ambiguousPorts).AddData((TypeMethod)(type, nType, method));
+                                    ResultB(ambiguousPorts).AddData(searchResults.Where(t => t.target == null).ToList());
                                 }
                             }
                         }
             }
-            var typeList = ResultA(foundPorts).GetData<(Type type, Type, MethodInfo)>().Select(t => t.type).ToList();
-            var statList = ResultB(foundPorts).GetData<List<(int pos, StatDef stat)>>().SelectMany(t => t.Select(tt => tt.stat)).ToList();
+            var typeList = ResultA(foundPorts).GetData<TypeMethod>().Select(t => t.type).ToList();
+            var statList = ResultB(foundPorts).GetData<List<ItemPos<StatDef>>>().SelectMany(t => t.Select(tt => tt.target)).ToList();
             typeList.RemoveDuplicates();
             statList.RemoveDuplicates();
             foundPorts[0].SetData(typeList);
             foundPorts[1].SetData(statList);
-            typeList = ResultA(ambiguousPorts).GetData<(Type type, Type, MethodInfo)>().Select(t => t.type).ToList();
+            typeList = ResultA(ambiguousPorts).GetData<TypeMethod>().Select(t => t.type).ToList();
             typeList.RemoveDuplicates();
             ambiguousPorts[0].SetData(typeList);
             return true;
         }
-        public virtual bool SearchMethod(MethodInfo searchMethod, out List<(int pos, StatDef stat)> Results, out List<CodeInstruction> PawnIns)
+        public virtual bool SearchMethod(MethodInfo searchMethod, out List<ItemPos<StatDef>> Results, out List<CodeInstruction> PawnIns)
         {
-            Results = new List<(int pos, StatDef stat)>();
+            Results = new List<ItemPos<StatDef>>();
             PawnIns = new List<CodeInstruction>();
             bool foundResult = false;
             bool foundPawn = false;
@@ -147,7 +150,7 @@ namespace AutoPatcher
                     if (calledMethod.ReturnType == typeof(StatDef))
                     {
                         foundResult = true;
-                        Results.Add((i, null));
+                        Results.Add((ItemPos<StatDef>)(i, null));
                     }
                     else if (calledMethod.ReturnType.IsAssignableFrom(typeof(Pawn)))
                     {
@@ -169,7 +172,7 @@ namespace AutoPatcher
                 if (instruction.opcode == OpCodes.Ldsfld && instruction.operand is FieldInfo statField &&
                     statField.FieldType == typeof(StatDef) && StatDefOfFieldInfo.Contains(statField))
                 {
-                    Results.Add((i, FieldToStat[statField]));
+                    Results.Add((ItemPos<StatDef>)(i, FieldToStat[statField]));
                     foundResult = true;
                 }
                 if (!FindAll && foundResult && (!findPawn || foundPawn))

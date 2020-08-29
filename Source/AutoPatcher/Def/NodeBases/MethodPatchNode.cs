@@ -6,13 +6,13 @@ using AutoPatcher.Utility;
 
 namespace AutoPatcher
 {
-    public class MethodPatchNode<TargetT> : PatchNode<TargetT, (int pos, TargetT target)>
+    public class MethodPatchNode<TargetT> : PatchNode<TargetT, ItemPos<TargetT>>
     {
         public override bool Prepare(Node node)
         {
-            var typeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
+            var typeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
             var methods = typeMethods.ConvertAll(t => t.method);
-            var targets = node.inputPorts[2].GetDataList<List<(int pos, TargetT target)>>();
+            var targets = node.inputPorts[2].GetDataList<SavedList<ItemPos<TargetT>>>();
             for (int i = 0; i < methods.Count; i++)
             {
                 var method = methods[i];
@@ -25,7 +25,7 @@ namespace AutoPatcher
                     foreach (var offset in offsets)
                         if (targetPos >= offset.pos)
                             targetPos += offset.offset;
-                    targets[i][j] = (targetPos, target.target);
+                    targets[i][j] = new ItemPos<TargetT>(targetPos, target.target);
                 }
             }
             node.inputPorts[2].SetData(targets);
