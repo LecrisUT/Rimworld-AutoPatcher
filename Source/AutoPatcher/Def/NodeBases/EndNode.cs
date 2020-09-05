@@ -4,11 +4,13 @@ namespace AutoPatcher
 {
     public abstract class EndNode<T> : NodeDef
     {
+        public override bool SaveInPort => true;
         protected override int baseInPorts => 1;
         protected override int nInPortGroups => 1;
         protected override void CreateInputPortGroup(Node node, int group)
             => node.inputPorts.Add(new Port<T>());
         protected IPort BaseInput(List<IPort> ports) => ports[0];
+        public override bool Perform(Node node) => true;
     }
     public abstract class EndNode<T,InputAT> : EndNode<T>
     {

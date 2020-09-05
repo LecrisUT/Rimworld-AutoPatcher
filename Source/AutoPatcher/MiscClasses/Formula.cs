@@ -5,7 +5,7 @@ using Verse;
 
 namespace AutoPatcher
 {
-    public class Formula
+    public class Formula : IExposable
     {
         public List<StatDef> inputs = new List<StatDef>();
         public StatDef output;
@@ -46,6 +46,16 @@ namespace AutoPatcher
                     arg.setArgumentValue(modifier.value);
             value = (float)expr.calculate();
             return true;
+        }
+        public void ExposeData()
+        {
+            Scribe_Collections.Look(ref inputs, "inputs", LookMode.Def);
+            Scribe_Defs.Look(ref output, "output");
+            Scribe_Collections.Look(ref stuffCategoryDefs, "stuffCategoryDefs", LookMode.Def);
+            Scribe_Values.Look(ref expression, "expression");
+            Scribe_Collections.Look(ref arguments, "arguments", LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+                Initialize();
         }
     }
 }

@@ -11,7 +11,7 @@ using Verse.AI;
 namespace AutoPatcher
 {
     // HarmonyStat
-    public class HarmonyToil : EnumerableMethodPatchNode<List<MethodInfo>, List<(Label label, int ToilStart, int ToilEnd)>>
+    public class HarmonyToil : EnumerableMethodPatchNode<SavedList<MethodInfo>, SavedList<EnumItemInfo>>
     {
         private MethodInfo PrepareMethod;
         private HarmonyMethod Transpiler;
@@ -46,10 +46,10 @@ namespace AutoPatcher
         {
             if (!base.Perform(node))
                 return false;
-            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, int ToilIndex, List<MethodInfo> actions)>>();
-            var toilInfoList = InputA(node.inputPorts).GetDataList<List<(Label label, int ToilStart, int ToilEnd)>>();
-            var enumInfoList = EnumInfo(node.inputPorts).GetDataList<(FieldInfo Current, FieldInfo switchField, LocalVar local)>();
+            var TypeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<EnumItemPos<SavedList<MethodInfo>>>>();
+            var toilInfoList = InputA(node.inputPorts).GetDataList<List<EnumItemInfo>>();
+            var enumInfoList = EnumInfo(node.inputPorts).GetDataList<EnumInfo>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
@@ -57,7 +57,7 @@ namespace AutoPatcher
                 MethodInfo method = TypeMethods[i].method;
                 method = AccessTools.Method(type, "MakeNewToils");
                 var positions = targetCI[i];
-                var actions = positions.SelectMany(t => t.actions).ToList();
+                var actions = positions.SelectMany(t => t.target).ToList();
                 var toilInfo = toilInfoList[i];
                 var enumInfo = enumInfoList[i];
                 actions.RemoveDuplicates();
@@ -70,20 +70,21 @@ namespace AutoPatcher
             }
             return true;
         }
-        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, (FieldInfo getCurrent, FieldInfo switchField, LocalVar local) enumInfo, List<MethodInfo> actions, List<(Label label, int ToilStart, int ToilEnd)> toilInfo)
+        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, EnumInfo enumInfo, List<MethodInfo> actions, List<EnumItemInfo> toilInfo)
         {
             if (PrepareMethod == null)
                 return true;
             var param = PrepareMethod.GetParameters();
             var inp3 = param[3];
             var inp5 = param[5];
+            var inp5_Type = inp5.ParameterType.GetInterface(typeof(IEnumerable<>).Name).GenericTypeArguments.First();
             if (!enumInfo.TryCastTo(inp3.ParameterType, out var cenumInfo))
             {
                 Log.Error($"[[LC]AutoPatcher] TempError 468735468: {PrepareMethod.DeclaringType} : {PrepareMethod}\n" +
                     $"{enumInfo.GetType()} -> {inp3.ParameterType}");
                 return false;
             }
-            if (!toilInfo.TryCastTo<List<(Label, int, int)>>(inp5.ParameterType, out var ctoilInfo))
+            if (!toilInfo.TryCastTo<EnumItemInfo>(inp5_Type, out var ctoilInfo))
             {
                 Log.Error($"[[LC]AutoPatcher] TempError 879466879: {PrepareMethod.DeclaringType} : {PrepareMethod}\n" +
                     $"{toilInfo.GetType()} -> {inp5.ParameterType}");
@@ -94,13 +95,13 @@ namespace AutoPatcher
         }
     }
     // AP_ToilPatch
-    public class AP_ToilPatch : EnumerableMethodPatchNode<List<MethodInfo>, List<(Label label, int ToilStart, int ToilEnd)>>
+    public class AP_ToilPatch : EnumerableMethodPatchNode<SavedList<MethodInfo>, SavedList<EnumItemInfo>>
     {
         private Type HelperType;
         private MethodInfo HelperPrepare;
         private MethodInfo HelperTranspile;
         private static MethodInfo HelperTranspileStatic;
-        private static List<(int pos, int ToilIndex, List<MethodInfo> actions)> Targets;
+        private static List<EnumItemPos<SavedList<MethodInfo>>> Targets;
         protected static bool successfull = true;
         public override void Initialize(bool fromSave = false)
         {
@@ -113,20 +114,20 @@ namespace AutoPatcher
                 return false;
             HelperTranspileStatic = HelperTranspile;
             var thisTranspiler = new HarmonyMethod(AccessTools.Method(typeof(AP_ToilPatch), "Transpiler"));
-            var TypeMethods = node.inputPorts[0].GetDataList<(Type type, Type ntype, MethodInfo method)>();
-            var targetCI = TargetPos(node.inputPorts).GetDataList<List<(int pos, int ToilIndex, List<MethodInfo> actions)>>();
-            var toilInfoList = InputA(node.inputPorts).GetDataList<List<(Label label, int ToilStart, int ToilEnd)>>();
-            var enumInfoList = EnumInfo(node.inputPorts).GetDataList<(FieldInfo Current, FieldInfo switchField, LocalVar local) >();
+            var TypeMethods = node.inputPorts[0].GetDataList<TypeMethod>();
+            var targetCI = TargetPos(node.inputPorts).GetDataList<List<EnumItemPos<SavedList<MethodInfo>>>>();
+            var toilInfoList = InputA(node.inputPorts).GetDataList<List<EnumItemInfo>>();
+            var enumInfoList = EnumInfo(node.inputPorts).GetDataList<EnumInfo>();
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
                 Type ntype = TypeMethods[i].ntype;
                 MethodInfo method = TypeMethods[i].method;
                 Targets = targetCI[i];
-                List<MethodInfo> actions = Targets.SelectMany(t => t.actions).ToList();
+                List<MethodInfo> actions = Targets.SelectMany(t => t.target).ToList();
                 var toilInfo = toilInfoList[i];
                 var enumInfo = enumInfoList[i];
-                switchField = enumInfo.switchField;
+                switchField = enumInfo.State;
                 actions.RemoveDuplicates();
                 if (Helper_Prepare(type, ntype, method, enumInfo, actions, toilInfo))
                 {
@@ -155,7 +156,7 @@ namespace AutoPatcher
                 foreach (var offset in Offsets)
                     if (pos >= offset.pos)
                         pos += offset.offset;
-                if (Helper_Transpile(ref instructionList, generator, pos, target.actions, out var offsets, out var newItems))
+                if (Helper_Transpile(ref instructionList, generator, pos, target.target, out var offsets, out var newItems))
                 {
                     successfull = true;
                     if (!offsets.NullOrEmpty())
@@ -209,28 +210,36 @@ namespace AutoPatcher
                 return null;
             return instructionList;
         }
-        public static bool Helper_Transpile(ref List<CodeInstruction> instructions, ILGenerator generator, int pos, List<MethodInfo> actions, out List<(int pos, int offset)> CIOffsets, out List<(Label label, int pos, int length)> newItems)
+        public static bool Helper_Transpile(ref List<CodeInstruction> instructions, ILGenerator generator, int pos, List<MethodInfo> actions, out List<(int pos, int offset)> CIOffsets, out List<(Label,int,int)> newItems)
         {
             var param = new object[] { instructions, generator, pos, actions, null, null };
             var res = (bool)HelperTranspileStatic.Invoke(null, param);
             CIOffsets = (List<(int,int)>)param[4];
-            newItems = (List<(Label, int, int)>)param[5];
+            var param5 = param[5];
+            if (!param5.TryCastTo(out newItems))
+            {
+                Log.Error($"[[LC]AutoPatcher] TempError 468735468: {HelperTranspileStatic.DeclaringType} : {HelperTranspileStatic}\n" +
+                    $"{param5.GetType()} -> {typeof(List<(Label, int, int)>)}");
+                return false;
+            }
+            newItems = (List<(Label,int,int)>)param[5];
             return res;
         }
-        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, (FieldInfo getCurrent, FieldInfo switchField, LocalVar local) enumInfo, List<MethodInfo> actions, List<(Label label, int ToilStart, int ToilEnd)> toilInfo)
+        public bool Helper_Prepare(Type type, Type ntype, MethodInfo method, EnumInfo enumInfo, List<MethodInfo> actions, List<EnumItemInfo> toilInfo)
         {
             if (HelperPrepare == null)
                 return true;
             var param = HelperPrepare.GetParameters();
             var inp3 = param[3];
             var inp5 = param[5];
+            var inp5_Type = inp5.ParameterType.GetInterface(typeof(IEnumerable<>).Name).GenericTypeArguments.First();
             if (!enumInfo.TryCastTo(inp3.ParameterType, out var cenumInfo))
             {
                 Log.Error($"[[LC]AutoPatcher] TempError 468735468: {HelperPrepare.DeclaringType} : {HelperPrepare}\n" +
                     $"{enumInfo.GetType()} -> {inp3.ParameterType}");
                 return false;
             }
-            if (!toilInfo.TryCastTo<List<(Label,int,int)>>(inp5.ParameterType, out var ctoilInfo))
+            if (!toilInfo.TryCastTo<EnumItemInfo>(inp5_Type, out var ctoilInfo))
             {
                 Log.Error($"[[LC]AutoPatcher] TempError 879466879: {HelperPrepare.DeclaringType} : {HelperPrepare}\n" +
                     $"{toilInfo.GetType()} -> {inp5.ParameterType}");

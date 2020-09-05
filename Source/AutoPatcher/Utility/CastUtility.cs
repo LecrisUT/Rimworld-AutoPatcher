@@ -244,6 +244,14 @@ namespace AutoPatcher.Utility
         }
         #endregion
         #region Helper functions semi-generic
+        public static bool TryCastTo<T>(this object obj, out T val, bool all = false)
+        {
+            var method = TryCastToObj_Method.MakeGenericMethod(obj.GetType(), typeof(T));
+            var par = new object[] { obj, null, all };
+            var res = (bool)method.Invoke(null, par);
+            val = (T)par[1];
+            return res;
+        }
         public static bool TryCastTo<Tobj>(this Tobj obj, Type T, out object val, bool all = false)
         {
             var method = TryCastToObj_Method.MakeGenericMethod(typeof(Tobj), T);
@@ -252,20 +260,23 @@ namespace AutoPatcher.Utility
             val = par[1];
             return res;
         }
-        public static bool TryCastTo<Tobj>(this IEnumerable<Tobj> objs, Type T, out IEnumerable<object> val, bool all = false)
+        public static bool TryCastTo<Tobj>(this IEnumerable<Tobj> objs, Type T, out object val, bool all = false)
         {
             var method = TryCastToEnumerable_Method.MakeGenericMethod(typeof(Tobj), T);
             var par = new object[] { objs, null, all };
             var res = (bool)method.Invoke(null, par);
-            val = ((IEnumerable)par[1])?.Cast<object>();
+            val = par[1];
             return res;
         }
-        public static bool TryCastTo<Tobj>(this List<Tobj> objs, Type T, out List<object> val, bool all = false)
+        public static bool TryCastTo<Tobj>(this List<Tobj> objs, Type T, out object val, bool all = false)
         {
+            val = Activator.CreateInstance(typeof(List<>).MakeGenericType(T));
+            var IList = (IList)val;
             var method = TryCastToList_Method.MakeGenericMethod(typeof(Tobj), T);
             var par = new object[] { objs, null, all };
             var res = (bool)method.Invoke(null, par);
-            val = ((IEnumerable)par[1])?.Cast<object>()?.ToList() ?? new List<object>();
+            foreach (var item in (IEnumerable)par[1])
+                IList.Add(item);
             return res;
         }
         public static object CastTo<Tobj>(this Tobj obj, Type T, bool all = false)
@@ -273,15 +284,15 @@ namespace AutoPatcher.Utility
             obj.TryCastTo(T, out var val, all);
             return val;
         }
-        public static IEnumerable<object> CastTo<Tobj>(this IEnumerable<Tobj> objs, Type T, bool all = false)
+        public static object CastTo<Tobj>(this IEnumerable<Tobj> objs, Type T, bool all = false)
         {
-            objs.TryCastTo<Tobj>(T, out var vals, all);
+            objs.TryCastTo(T, out var vals, all);
             return vals;
         }
-        public static List<object> CastTo<Tobj>(this List<Tobj> objs, Type T)
+        public static object CastTo<Tobj>(this List<Tobj> objs, Type T)
         {
-            objs.TryCastTo<Tobj>(T, out var vals);
-            vals = vals ?? new List<object>();
+            objs.TryCastTo(T, out var vals);
+            vals = vals ?? Activator.CreateInstance(typeof(List<>).MakeGenericType(T));
             return vals;
         }
         #endregion

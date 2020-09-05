@@ -17,7 +17,7 @@ namespace AutoPatcher
         void AddData<T>(IEnumerable<T> value);
         void Clear();
         string PrintData();
-        void RegisterPort(Node node, int portNumber, int portGroup);
+        void RegisterPort(Node node, int portNumber, int portGroup, bool inPort);
     }
     /// <summary>
     /// Specific data port interface

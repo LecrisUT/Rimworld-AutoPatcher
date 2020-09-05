@@ -6,11 +6,10 @@ using RimWorld;
 using Verse;
 using HarmonyLib;
 using System.Reflection.Emit;
-using Mono.Posix;
 
 namespace AutoPatcher
 {
-    public class StatSearch : SearchNode<Type, StatDef, TypeMethod, List<ItemPos<StatDef>>>
+    public class StatSearch : SearchNode<Type, StatDef, TypeMethod, SavedList<ItemPos<StatDef>>>
     {
         protected bool findPawn = false;
         protected bool findDeep = true;

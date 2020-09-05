@@ -5,9 +5,10 @@ namespace AutoPatcher
 {
     public class PatchNode<TargetT, TargetTPos> : PassNode<TypeMethod, TypeMethod>
     {
+        public override bool SaveInPort => true;
         protected override int baseInPorts => 3;
         protected override int nOutPortGroups => 2;
-        public Harmony harmony = MainMod.harmony;
+        public HarmonyLib.Harmony harmony = AutoPatcher.harmony;
         private string HarmonyName;
 
         public List<IPort> SuccessfulPorts(Node node)
@@ -25,9 +26,10 @@ namespace AutoPatcher
             if (!base.Initialize(node))
                 return false;
             if (HarmonyName != null)
-                harmony = new Harmony(HarmonyName);
+                harmony = new HarmonyLib.Harmony(HarmonyName);
             return true;
         }
+        public override bool Perform(Node node) => true;
         public override bool PostPerform(Node node)
         {
             if (!base.PostPerform(node))

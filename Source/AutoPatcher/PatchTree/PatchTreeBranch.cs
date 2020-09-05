@@ -141,11 +141,11 @@ namespace AutoPatcher
         }
         public void ExposeData()
         {
-            /*Scribe_Defs.Look(ref patchTree, "patchTree");
+            Scribe_Defs.Look(ref patchTree, "patchTree");
             Scribe_References.Look(ref inputNode, "inputNode");
             Scribe_References.Look(ref outputNode, "outputNode");
             Scribe_References.Look(ref inputPort, "inputPort");
-            Scribe_References.Look(ref outputPort, "outputPort");*/
+            Scribe_References.Look(ref outputPort, "outputPort");
         }
     }
 }

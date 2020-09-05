@@ -1,7 +1,6 @@
 ﻿using AutoPatcher.Utility;
 using HarmonyLib;
 using HugsLib;
-using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -9,19 +8,31 @@ namespace AutoPatcher
 {
     internal class Controller : ModBase
     {
+        public static bool fromSave = false;
         public override void DefsLoaded()
         {
             // Run patch trees
-            // bool fromSave = true;
-            bool fromSave = false;
-            /*var settings = MainMod.thisMod.settings;
+            Settings settings;
+            try
+            {
+                settings = AutoPatcher.thisMod.settings ?? AutoPatcher.thisMod.GetSettings<Settings>();
+            }
+            catch
+            {
+                Log.Warning($"[[LC]AutoPatcher] TempWarning 575646: could not load settings");
+                settings = new Settings();
+                fromSave = false;
+            }
             var currMods = ModsConfig.ActiveModsInLoadOrder.Select(t => t.PackageId);
-            var savedMods = settings.modList;
-            if (savedMods.EnumerableNullOrEmpty() ||  savedMods.SetEquals(currMods))
-                fromSave = false;*/
+            if (fromSave)
+            {
+                var savedMods = settings.modList;
+                if (savedMods.EnumerableNullOrEmpty() || savedMods.SetEquals(currMods))
+                    fromSave = false;
+            }
             var patchTrees = DefDatabase<PatchTreeDef>.AllDefs;
             NodeUtility.allNodeDefs.Do(t => t.Initialize(fromSave));
-            foreach (PatchTreeDef patchTree in patchTrees)
+            foreach (var patchTree in patchTrees)
             {
                 patchTree.Initialize(fromSave);
                 patchTree.Perform();

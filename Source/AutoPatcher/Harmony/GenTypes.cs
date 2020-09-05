@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Verse;
 
-namespace AutoPatcher
+namespace AutoPatcher.Harmony
 {
     // Fix Rimworld generic Def issue related to DefDatabase creation.
     // To be run manually early in the mod launch to prevent issues.

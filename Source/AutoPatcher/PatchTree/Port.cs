@@ -10,9 +10,20 @@ using System.Collections;
 namespace AutoPatcher
 {
     // Placehorder for common functions
-    public abstract class Port
+    public abstract class Port : IExposable, ILoadReferenceable
     {
-
+        public Node node;
+        public int portNumber;
+        public int portGroup;
+        public bool inPort;
+        public virtual void ExposeData()
+        {
+            Scribe_References.Look(ref node, "node");
+            Scribe_Values.Look(ref portNumber, "portNumber");
+            Scribe_Values.Look(ref portGroup, "portGroup");
+        }
+        public string GetUniqueLoadID()
+            => node.GetUniqueLoadID() + "_Port" + (inPort ? "In" : "Out") + portNumber;
     }
     // Main port interface and data storage
     /// <summary>
@@ -21,14 +32,12 @@ namespace AutoPatcher
     /// <typeparam name="dataT">data type of the port</typeparam>
     public class Port<dataT> : Port, IPort<dataT>
     {
-        public Node node;
-        public int portNumber;
-        public int portGroup;
-        public void RegisterPort(Node node, int portNumber, int portGroup)
+        public void RegisterPort(Node node, int portNumber, int portGroup, bool inPort)
         {
             this.node = node;
             this.portNumber = portNumber;
             this.portGroup = portGroup;
+            this.inPort = inPort;
         }
         public Type DataType { get => typeof(dataT); }
         public List<dataT> data = new List<dataT>();
@@ -110,15 +119,13 @@ namespace AutoPatcher
             return builder.ToString();
         }
 
-        public void ExposeData()
+        public override void ExposeData()
         {
-            /*Scribe_Collections.Look(ref data, "data", LookMode.Undefined);
-            Scribe_References.Look(ref node, "node");
-            Scribe_Values.Look(ref portNumber, "portNumber");
-            Scribe_Values.Look(ref portGroup, "portGroup");*/
+            base.ExposeData();
+            if (Scribe.mode == LoadSaveMode.LoadingVars && !Controller.fromSave)
+                return;
+            Scribe_Collections.Look(ref data, "data", LookMode.Undefined);
         }
-        public string GetUniqueLoadID()
-            => node.GetUniqueLoadID() + "_Port" + portNumber;
         // Future work: Change how PrintData performs for List and tuple.
         /*public static bool IsTuple(Type tuple)
         {

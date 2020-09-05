@@ -20,21 +20,20 @@ namespace AutoPatcher
             Text.Font = GameFont.Small;
             Text.Anchor = TextAnchor.UpperLeft;
             options.Gap();
-            bool reset = options.ButtonText("Reset the saved data");
+            /*bool reset = options.ButtonText("Reset the saved data");
             if (reset)
             {
                 modList = ModsConfig.ActiveModsInLoadOrder.Select(t => t.PackageId).ToHashSet();
                 patchTrees = null;
-            }
+            }*/
             options.End();
-
-            Mod.GetSettings<Settings>().Write();
+            //Mod.GetSettings<Settings>().Write();
         }
 
         public override void ExposeData()
         {
-            /*Scribe_Collections.Look(ref patchTrees, "patchTrees", LookMode.Deep);
-            Scribe_Collections.Look(ref modList, "modList");*/
+            Scribe_Collections.Look(ref patchTrees, "patchTrees", LookMode.Deep);
+            Scribe_Collections.Look(ref modList, "modList");
         }
     }
 }

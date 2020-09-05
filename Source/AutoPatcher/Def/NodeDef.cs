@@ -19,6 +19,8 @@ namespace AutoPatcher
         protected virtual int baseInPorts => 0;
         protected virtual int nOutPortGroups => 0;
         protected virtual int nInPortGroups => 0;
+        public virtual bool SaveInPort => false;
+        public virtual bool SaveOutPort => false;
         public NodeDef()
         {
             // Have to manually add to a list to access Initialize()
@@ -45,7 +47,7 @@ namespace AutoPatcher
                 CreateInputPortGroup(node, i);
                 node.inputPortGroups.Add(node.inputPorts.GetRange(i * baseInPorts, baseInPorts));
                 for (int j = 0; j < baseInPorts; j++)
-                    node.inputPortGroups[i][j].RegisterPort(node, i * baseInPorts + j, i);
+                    node.inputPortGroups[i][j].RegisterPort(node, i * baseInPorts + j, i, true);
             };
             node.outputPorts = new List<IPort>(nOutPorts);
             node.outputPortGroups = new List<List<IPort>>(nOutPortGroups);
@@ -55,13 +57,15 @@ namespace AutoPatcher
                 CreateOutputPortGroup(node, i);
                 node.outputPortGroups.Add(node.outputPorts.GetRange(i * baseOutPorts, baseOutPorts));
                 for (int j = 0; j < baseOutPorts; j++)
-                    node.outputPortGroups[i][j].RegisterPort(node, i * baseOutPorts + j, i);
+                    node.outputPortGroups[i][j].RegisterPort(node, i * baseOutPorts + j, i, false);
             }
             return true;
         }
         // Prepare stage: Node specific preparations before Perform stage
         public virtual bool Prepare(Node node)
         {
+            if (node.fromSave && !node.nodeDef.SaveInPort)
+                return false;
             var DebugLevel = node.DebugLevel;
             var DebugMessage = node.DebugMessage;
             var inputPorts = node.inputPorts;
@@ -81,12 +85,14 @@ namespace AutoPatcher
             return true;
         }
         // Perform stage: Main function of the node
-        public virtual bool Perform(Node node) => true;
+        public virtual bool Perform(Node node) => !node.fromSave;
         // PostPerform stage: Cleanup stage before Pass stage
-        public virtual bool PostPerform(Node node) => true;
+        public virtual bool PostPerform(Node node) => !node.fromSave;
         // Pass stage: Pass the data to next nodes in the branch list
         public virtual bool Pass(Node node, IEnumerable<PatchTreeBranch> branches)
         {
+            if (node.fromSave && !node.nodeDef.SaveOutPort)
+                return false;
             var DebugLevel = node.DebugLevel;
             var DebugMessage = node.DebugMessage;
             var outputPorts = node.outputPorts;

@@ -12,8 +12,9 @@ using AutoPatcher.Utility;
 namespace AutoPatcher
 {
     public class JobDriverSearchToil : SearchNode<Type, TypeMethod, TypeMethod,
-        List<(int pos, int ToilIndex, List<MethodInfo> actions)>,
-        List<EnumItemInfo>, List<MethodInfo>, EnumInfo>
+        SavedList<EnumItemPos<SavedList<MethodInfo>>>,
+        //SavedList<(int pos, int ToilIndex, List<MethodInfo> actions)>,
+        SavedList<EnumItemInfo>, SavedList<MethodInfo>, EnumInfo>
     {
         public override bool Perform(Node node)
         {
@@ -51,7 +52,7 @@ namespace AutoPatcher
                             ResultA(foundPorts).AddData(new TypeMethod(type, nType, MoveNext));
                             ResultB(foundPorts).AddData(SearchResults);
                             ResultC(foundPorts).AddData(toilInfo);
-                            var actions = SearchResults.SelectMany(t => t.actions).ToList();
+                            var actions = SearchResults.SelectMany(t => t.target).ToList();
                             actions.RemoveDuplicates();
                             ResultD(foundPorts).AddData(actions);
                             NodeUtility.enumerableItems.SetOrAdd(MoveNext, toilInfo);
@@ -61,7 +62,7 @@ namespace AutoPatcher
                     }
                 }
             }
-            var foundActions = ResultB(foundPorts).GetData<List<(int pos, int ToilIndex, List<MethodInfo> actions)>>().SelectMany(t => t.SelectMany(tt => tt.actions)).ToList();
+            var foundActions = ResultB(foundPorts).GetData<List<EnumItemPos<SavedList<MethodInfo>>>>().SelectMany(t => t.SelectMany(tt => tt.target)).ToList();
             foundActions.RemoveDuplicates();
             foundPorts[1].SetData(targets.Where(t=>foundActions.Contains(t.method)).ToList());
             return true;
@@ -112,10 +113,10 @@ namespace AutoPatcher
             return foundResult;
         }
         public bool SearchMoveNext(MethodInfo searchMethod, List<MethodInfo> ActionList, List<(MethodInfo generator, List<MethodInfo> actions)> ToilGenerators, ref EnumInfo enumInfo,
-            out List<(int pos, int toilIndex, List<MethodInfo> actions)> Results, out List<EnumItemInfo> toilInfo)
+            out List<EnumItemPos<SavedList<MethodInfo>>> Results, out List<EnumItemInfo> toilInfo)
         {
 
-            Results = new List<(int, int, List<MethodInfo>)>();
+            Results = new List<EnumItemPos<SavedList<MethodInfo>>>();
             toilInfo = new List<EnumItemInfo>();
             bool foundResult = false;
             bool foundSwitch = false;
@@ -133,7 +134,7 @@ namespace AutoPatcher
                     {
                         enumInfo.State = field;
                         if (instructionList[i + 2].IsStloc())
-                            enumInfo.localState = instructionList[i + 2].ToLocalVar();
+                            enumInfo.localState = instructionList[i + 2].ToLocalVar(searchMethod);
                         continue;
                     }
                 }
@@ -222,7 +223,7 @@ namespace AutoPatcher
                     if (flagFound && instruction.StoresField(enumInfo.Current))
                     {
                         foundResult = true;
-                        Results.Add((i, toilIndex, ActionsFound));
+                        Results.Add(new EnumItemPos<SavedList<MethodInfo>>(toilIndex, i, (SavedList<MethodInfo>)ActionsFound));
                         ActionsFound = new List<MethodInfo>();
                         flagFound = false;
                         continue;

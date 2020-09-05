@@ -1,5 +1,6 @@
 ﻿using AutoPatcher.Utility;
 using HarmonyLib;
+using RimWorld;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using UnityEngine;
+using System.Text;
 using Verse;
 
 namespace AutoPatcher
@@ -85,9 +86,45 @@ namespace AutoPatcher
             => $"{type} : {ntype} : {method}";
         public void ExposeData()
         {
+            var method_param = method?.GetParameters().Select(t => t.ParameterType).ToList();
+            method_param = method_param.NullOrEmpty() ? null : method_param;
+            var method_generics = method?.GetGenericArguments().ToList();
+            method_generics = method_generics.NullOrEmpty() ? null : method_generics;
+            var method_name = method?.Name;
             Scribe_Values.Look(ref type, "type");
             Scribe_Values.Look(ref ntype, "ntype");
-            Scribe_Values.Look(ref method, "method");
+            Scribe_Collections.Look(ref method_param, "method_param");
+            Scribe_Collections.Look(ref method_generics, "method_generics");
+            Scribe_Values.Look(ref method_name, "method_name");
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                try
+                {
+                    method_param = method_param.NullOrEmpty() ? null : method_param;
+                    method_generics = method_generics.NullOrEmpty() ? null : method_generics;
+                    method = AccessTools.Method(ntype ?? type, method_name, method_param?.ToArray(), method_generics?.ToArray());
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e.Message);
+                    var warn = new StringBuilder($"[[LC]AutoPatcher] TempWarning 648676: Could not find the method: {type} : {ntype} : {method_name}\n");
+                    warn.AppendLine("Generics:");
+                    if (method_generics.NullOrEmpty())
+                        warn.AppendLine("    None");
+                    else
+                        foreach (var gen in method_generics)
+                            warn.AppendLine($"{gen}");
+                    warn.AppendLine("\nParameters:");
+                    if (method_param.NullOrEmpty())
+                        warn.AppendLine("    None");
+                    else
+                        foreach (var param in method_param)
+                            warn.AppendLine($"{param}");
+                    warn.AppendLine("\n" + e.Message);
+                    Log.Warning(warn.ToString());
+                    Controller.fromSave = false;
+                }
+            }
         }
     }
     public class EnumInfo : IExposable
@@ -118,6 +155,7 @@ namespace AutoPatcher
         public Label label;
         public int startPos;
         public int endPos;
+        // public MethodInfo method;
         public EnumItemInfo() { }
         public EnumItemInfo(Label lab, int start, int end)
         {
@@ -129,9 +167,19 @@ namespace AutoPatcher
         public static explicit operator EnumItemInfo((Label, int, int) info) => new EnumItemInfo(info.Item1, info.Item2, info.Item3);
         public void ExposeData()
         {
-            Scribe_Values.Look(ref label, "label");
+            var label_hash = label.GetHashCode();
+            Scribe_Values.Look(ref label_hash, "label_hash");
             Scribe_Values.Look(ref startPos, "startPos");
             Scribe_Values.Look(ref endPos, "endPos");
+            // Scribe_Values.Look(ref method, "method");
+            //Log.Message($"Test 0.0: {label.GetHashCode()} : {label_hash}");
+            //if (Scribe.mode == LoadSaveMode.LoadingVars)
+            //    Traverse.Create(label).Field("m_label").SetValue(label_hash);
+            //else if (Scribe.mode == LoadSaveMode.Saving)
+            //    label_hash = (int)Traverse.Create(label).Field("m_label").GetValue();
+            //Log.Message($"Test 0.1: {label.GetHashCode()} : {label_hash}");
+            //foreach (var a in Traverse.Create(label).Fields())
+            //    Log.Message($"Test 0.2: {a}");
         }
     }
     public class EnumItemPos<TargetT> : ItemPos<TargetT>
@@ -165,7 +213,9 @@ namespace AutoPatcher
         public virtual void ExposeData()
         {
             Scribe_Values.Look(ref pos, "pos");
-            Scribe_Values.Look(ref target, "target");
+            var type = typeof(TargetT);
+            var lookMode = LookMode.Undefined;
+            Scribe_Universal.Look(ref target, "target", ref lookMode, ref type);
         }
     }
     public class SavedTuple : IExposable, ITuple
@@ -400,19 +450,12 @@ namespace AutoPatcher
     public class SavedList : IList
     {
         public virtual IList IList => null;
-
         public bool IsReadOnly => IList.IsReadOnly;
-
         public bool IsFixedSize => IList.IsFixedSize;
-
         public int Count => IList.Count;
-
         public object SyncRoot => IList.SyncRoot;
-
         public bool IsSynchronized => IList.IsSynchronized;
-
         public object this[int index] { get => IList[index]; set => IList[index] = value; }
-
         public int Add(object value) => IList.Add(value);
         public bool Contains(object value) => IList.Contains(value);
         public void Clear() => IList.Clear();
@@ -449,7 +492,7 @@ namespace AutoPatcher
         public void Remove(object value) => ((IList)list).Remove(value);
         public void RemoveAt(int index) => list.RemoveAt(index);
         IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
-        public void ExposeData() => Scribe_Collections.Look(ref list, $"List[{typeof(T)}]");
+        public void ExposeData() => Scribe_Collections.Look(ref list, "List", LookMode.Undefined);
         public static implicit operator List<T>(SavedList<T> savedList) => savedList.list;
         public static explicit operator SavedList<T>(List<T> list) => new SavedList<T>(list);
     }

@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Collections.Generic;
 using Verse;
+using HarmonyLib;
 
 namespace AutoPatcher
 {
@@ -65,10 +66,18 @@ namespace AutoPatcher
             => $"[{name ?? (nodeDef.ToString() + index)}]";
         public void ExposeData()
         {
-            /*Scribe_Collections.Look(ref outputPorts, "outputPorts", LookMode.Deep);
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                if (!nodeDef.SaveInPort)
+                    inputPorts.Do(t => t.Clear());
+                if (!nodeDef.SaveOutPort)
+                    outputPorts.Do(t => t.Clear());
+            }
+            Scribe_Collections.Look(ref inputPorts, "inputPorts", LookMode.Deep);
+            Scribe_Collections.Look(ref outputPorts, "outputPorts", LookMode.Deep);
             Scribe_Values.Look(ref index, "index");
             Scribe_Values.Look(ref name, "name");
-            Scribe_Defs.Look(ref patchTree, "patchTree");*/
+            Scribe_Defs.Look(ref patchTree, "patchTree");
         }
 
         public string GetUniqueLoadID()

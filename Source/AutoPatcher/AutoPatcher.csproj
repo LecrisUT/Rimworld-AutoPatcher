@@ -25,7 +25,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\..\1.2\Assemblies\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -58,6 +58,9 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Harmony\BackCompatibility.cs" />
+    <Compile Include="Harmony\Scribe_Values.cs" />
+    <Compile Include="Harmony\Scribe_Universal.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Utility\CastUtility.cs" />
     <Compile Include="Utility\Utility.cs" />
@@ -68,16 +71,16 @@
     <Compile Include="Def\NodeBases\PatchNode.cs" />
     <Compile Include="Def\Nodes\JobSearch.cs" />
     <Compile Include="Def\Nodes\StatInject.cs" />
-    <Compile Include="Def\Port.cs" />
+    <Compile Include="PatchTree\Port.cs" />
     <Compile Include="Def\Nodes\ToilPatch.cs" />
-    <Compile Include="Def\PatchTreeBranch.cs" />
-    <Compile Include="Def\Interfaces.cs" />
+    <Compile Include="PatchTree\PatchTreeBranch.cs" />
+    <Compile Include="PatchTree\Interfaces.cs" />
     <Compile Include="Def\Nodes\ActionSearch.cs" />
     <Compile Include="Def\Nodes\ToilSearch.cs" />
-    <Compile Include="Harmony\Patch_GenTypes.cs" />
+    <Compile Include="Harmony\GenTypes.cs" />
     <Compile Include="MiscClasses\HelperClasses.cs" />
     <Compile Include="MiscClasses\Formula.cs" />
-    <Compile Include="Node.cs" />
+    <Compile Include="PatchTree\Node.cs" />
     <Compile Include="Utility\NodeUtility.cs" />
     <Compile Include="MainMod.cs" />
     <Compile Include="AutoPatcher_Controller.cs" />

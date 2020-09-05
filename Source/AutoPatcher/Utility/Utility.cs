@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace AutoPatcher.Utility
@@ -21,13 +22,13 @@ namespace AutoPatcher.Utility
                 return true;
             return LocalVar.OpCodeToInt[instruction.opcode] == local.index;
         }
-        public static LocalVar ToLocalVar(this CodeInstruction instruction)
+        public static LocalVar ToLocalVar(this CodeInstruction instruction, MethodInfo method = null)
         {
             if (!instruction.IsLdloc() && !instruction.IsStloc())
                 return null;
             if (instruction.operand is LocalBuilder builder)
                 return new LocalVar(builder);
-            return new LocalVar(LocalVar.OpCodeToInt[instruction.opcode]);
+            return new LocalVar(LocalVar.OpCodeToInt[instruction.opcode]) { method = method };
         }
 
     }

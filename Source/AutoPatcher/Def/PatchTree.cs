@@ -134,8 +134,8 @@ namespace AutoPatcher
         }
         public void ExposeData()
         {
-            /*Scribe_Collections.Look(ref Branches, "Branches", LookMode.Deep);
-            Scribe_Collections.Look(ref Nodes, "Nodes", LookMode.Deep);*/
+            Scribe_Collections.Look(ref Nodes, "Nodes", LookMode.Deep);
+            Scribe_Collections.Look(ref Branches, "Branches", LookMode.Deep);
         }
         public string GetUniqueLoadID()
             => defName;
