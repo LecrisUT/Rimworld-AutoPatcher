@@ -40,7 +40,11 @@ namespace AutoPatcher
             }
             options.Gap();
             Filter = options.TextEntryLabeled("Filter".Translate(), Filter, 1);
+#if V11
+            var itemsWindow = options.BeginSection(340f);
+#else
             var itemsWindow = options.BeginSection_NewTemp(340f);
+#endif
             itemsWindow.ColumnWidth = ((rect0.width - 50f) / 3f);
             if (patchTree != null)
                 foreach (var node in patchTree?.Nodes)
