@@ -22,6 +22,7 @@ namespace AutoPatcher
         public override string SettingsCategory() => "AutoPatcher".Translate();
         public override void DoSettingsWindowContents(Rect inRect)
         {
+            settings = thisMod.settings ?? thisMod.GetSettings<Settings>();
             settings.DoWindowContents(inRect);
         }
     }

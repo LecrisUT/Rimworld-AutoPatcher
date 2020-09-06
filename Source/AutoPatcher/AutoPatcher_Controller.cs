@@ -16,6 +16,7 @@ namespace AutoPatcher
             try
             {
                 settings = AutoPatcher.thisMod.settings ?? AutoPatcher.thisMod.GetSettings<Settings>();
+                AutoPatcher.thisMod.settings = settings;
             }
             catch
             {
@@ -37,9 +38,8 @@ namespace AutoPatcher
                 patchTree.Initialize(fromSave);
                 patchTree.Perform();
             }
-            /*settings.modList = currMods.ToHashSet();
-            settings.patchTrees = patchTrees.ToList();
-            settings.Write();*/
+            settings.modList = currMods.ToHashSet();
+            settings.Write();
         }
     }
 }

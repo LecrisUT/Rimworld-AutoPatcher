@@ -47,7 +47,7 @@ namespace AutoPatcher
                 CreateInputPortGroup(node, i);
                 node.inputPortGroups.Add(node.inputPorts.GetRange(i * baseInPorts, baseInPorts));
                 for (int j = 0; j < baseInPorts; j++)
-                    node.inputPortGroups[i][j].RegisterPort(node, i * baseInPorts + j, i, true);
+                    node.inputPortGroups[i][j].RegisterPort(node, i * baseInPorts + j, i, Port.InputOutput.input);
             };
             node.outputPorts = new List<IPort>(nOutPorts);
             node.outputPortGroups = new List<List<IPort>>(nOutPortGroups);
@@ -57,7 +57,7 @@ namespace AutoPatcher
                 CreateOutputPortGroup(node, i);
                 node.outputPortGroups.Add(node.outputPorts.GetRange(i * baseOutPorts, baseOutPorts));
                 for (int j = 0; j < baseOutPorts; j++)
-                    node.outputPortGroups[i][j].RegisterPort(node, i * baseOutPorts + j, i, false);
+                    node.outputPortGroups[i][j].RegisterPort(node, i * baseOutPorts + j, i, Port.InputOutput.output);
             }
             return true;
         }

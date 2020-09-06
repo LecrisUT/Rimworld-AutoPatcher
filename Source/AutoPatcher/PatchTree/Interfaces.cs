@@ -10,6 +10,7 @@ namespace AutoPatcher
     public interface IPort : IExposable, ILoadReferenceable
     {
         Type DataType { get; }
+        int DataCount { get; }
         IEnumerable<T> GetData<T>();
         List<T> GetDataList<T>();
         void SetData<T>(List<T> value);
@@ -17,7 +18,7 @@ namespace AutoPatcher
         void AddData<T>(IEnumerable<T> value);
         void Clear();
         string PrintData();
-        void RegisterPort(Node node, int portNumber, int portGroup, bool inPort);
+        void RegisterPort(Node node, int portNumber, int portGroup, Port.InputOutput InOut);
     }
     /// <summary>
     /// Specific data port interface

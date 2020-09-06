@@ -9,7 +9,7 @@ namespace AutoPatcher
     /// <summary>
     /// Patch tree
     /// </summary>
-    public class PatchTreeDef : Def, IExposable, ILoadReferenceable
+    public class PatchTreeDef : Def
     {
         /// <summary>
         /// All nodes of the PatchTree
@@ -45,20 +45,50 @@ namespace AutoPatcher
         /// <returns></returns>
         public bool Initialize(bool fromSave = false)
         {
+            var settings = AutoPatcher.thisMod.settings;
+            if (settings.patchTreeDebug.TryGetValue(this, out var val2))
+                DebugLevel = val2;
             if (fromSave)
-                Nodes.Do(t => t.fromSave = true);
-            else
             {
-                // Initialize all nodes to create the ports
-                Nodes.Do(t => t.Initialize(this));
-                // Initialize and create all missing branches
-                foreach (PatchTreeBranch branch in Branches.ToList())
-                    if (!branch.Initialize(this, Nodes))
+                var savedNodes = settings.allNodes;
+                var savedBranches = settings.allBranches;
+                bool flag = false;
+                for (int i = 0; i < Nodes.Count; i++)
+                {
+                    var node = Nodes[i];
+                    node.patchTree = this;
+                    var savedNode = savedNodes.FirstOrDefault(t => t.GetUniqueLoadID() == node.GetUniqueLoadID());
+                    if (savedNode != null)
+                        Nodes[i] = savedNode;
+                    else
                     {
-                        Log.Error($"[[LC]AutoPatcher] Failed to initialize branch {Branches.IndexOf(branch)} in PatchTree {defName}");
-                        return false;
+                        flag = true;
+                        Nodes[i].Initialize(this);
                     }
+                }
+                Nodes.Do(t => t.fromSave = true);
+                if (!flag)
+                {
+                    Branches = savedBranches.Where(t => t.patchTree == this).ToList();
+                    goto SkipInitBranch;
+                }
             }
+            else
+                foreach (var node in Nodes)
+                {
+                    // Initialize all nodes to create the ports
+                    node.Initialize(this);
+                    if (settings.nodeDebug.TryGetValue(node, out var val))
+                        node.DebugLevel = val;
+                }
+            // Initialize and create all missing branches
+            foreach (PatchTreeBranch branch in Branches.ToList())
+                if (!branch.Initialize(this, Nodes))
+                {
+                    Log.Error($"[[LC]AutoPatcher] Failed to initialize branch {Branches.IndexOf(branch)} in PatchTree {defName}");
+                    return false;
+                }
+            SkipInitBranch:
             var inputNodes = Branches.Select(t => t.inputNode).ToList();
             inputNodes.RemoveDuplicates();
             var outputNodes = Branches.Select(t => t.outputNode).ToList();
@@ -78,15 +108,16 @@ namespace AutoPatcher
             EndNodes = EndNodes.Except(BubbleNodes).ToList();
             if (DebugLevel > 0)
             {
-                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: PatchTree: {defName} : FromSave: {fromSave} : Nodes:\n");
+                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: Initialize PatchTree: {defName} : FromSave: {fromSave} : Nodes:\n");
                 foreach (var node in Nodes)
                 {
-                    DebugMessage.AppendLine($"{node}\nInputPorts:");
+                    DebugMessage.AppendLine($"{node}\nInputPorts: [{node.inputPorts.Count} / {node.inputPortGroups.Count}]");
                     for (int i = 0; i < node.inputPorts.Count; i++)
-                        DebugMessage.AppendLine($"[{i}] {node.inputPorts[i].DataType}");
-                    DebugMessage.AppendLine("OutputPorts:");
+                        DebugMessage.AppendLine($"[{i} / {i / node.inputPortGroups.Count}] {node.inputPorts[i].DataType}");
+                    DebugMessage.AppendLine($"OutputPorts: [{node.outputPorts.Count} / {node.outputPortGroups.Count}]");
                     for (int i = 0; i < node.outputPorts.Count; i++)
-                        DebugMessage.AppendLine($"[{i}] {node.outputPorts[i].DataType}");
+                        DebugMessage.AppendLine($"[{i} / {i / node.outputPortGroups.Count}] {node.outputPorts[i].DataType}");
+                    DebugMessage.AppendLine();
                 }
                 DebugMessage.AppendLine($"\nBranches:");
                 Branches.Do(t => DebugMessage.AppendLine($"({t.outputNode} : {t.outputNode.outputPorts.IndexOf(t.outputPort)} : {t.outputPort.DataType}) -> ({t.inputNode} : {t.inputNode.inputPorts.IndexOf(t.inputPort)} : {t.inputPort})"));
@@ -99,6 +130,8 @@ namespace AutoPatcher
         /// </summary>
         public void Perform()
         {
+            if (DebugLevel > 0)
+                DebugMessage = new StringBuilder($"[[LC]AutoPatcher]: Perform PatchTree: {defName}\n");
             RootNodes.Do(t => Perform(t));
             if (DebugLevel > 0)
                 Log.Message(DebugMessage.ToString());
@@ -120,6 +153,16 @@ namespace AutoPatcher
             node.PostPerform();
             node.Pass(branches);
             node.Finish();
+            if (DebugLevel > 0)
+            {
+                DebugMessage.AppendLine($"{node}\nInputPorts: {node.inputPorts.Count}");
+                for (int i = 0; i < node.inputPorts.Count; i++)
+                    DebugMessage.AppendLine($"[{i}] {node.inputPorts[i].DataType} : {node.inputPorts[i].DataCount}");
+                DebugMessage.AppendLine($"OutputPorts: {node.outputPorts.Count}");
+                for (int i = 0; i < node.outputPorts.Count; i++)
+                    DebugMessage.AppendLine($"[{i}] {node.outputPorts[i].DataType} : {node.outputPorts[i].DataCount}");
+                DebugMessage.AppendLine();
+            }
             if (EndNodes.Contains(node))
             {
                 node.End();
@@ -132,12 +175,5 @@ namespace AutoPatcher
             foreach (var nextNode in inputNodes)
                 Perform(nextNode);
         }
-        public void ExposeData()
-        {
-            Scribe_Collections.Look(ref Nodes, "Nodes", LookMode.Deep);
-            Scribe_Collections.Look(ref Branches, "Branches", LookMode.Deep);
-        }
-        public string GetUniqueLoadID()
-            => defName;
     }
 }

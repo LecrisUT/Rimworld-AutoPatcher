@@ -12,18 +12,27 @@ namespace AutoPatcher
     // Placehorder for common functions
     public abstract class Port : IExposable, ILoadReferenceable
     {
+        public enum InputOutput
+        {
+            input,
+            output,
+        }
         public Node node;
+        private string backupNodeID;
         public int portNumber;
         public int portGroup;
-        public bool inPort;
+        public InputOutput InOut;
         public virtual void ExposeData()
         {
             Scribe_References.Look(ref node, "node");
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+                Scribe_Values.Look(ref backupNodeID, "node");
             Scribe_Values.Look(ref portNumber, "portNumber");
             Scribe_Values.Look(ref portGroup, "portGroup");
+            Scribe_Values.Look(ref InOut, "InOut");
         }
         public string GetUniqueLoadID()
-            => node.GetUniqueLoadID() + "_Port" + (inPort ? "In" : "Out") + portNumber;
+            => (node?.GetUniqueLoadID() ?? backupNodeID) + "_Port" + (InOut == InputOutput.input ? "In" : "Out") + portNumber;
     }
     // Main port interface and data storage
     /// <summary>
@@ -32,17 +41,18 @@ namespace AutoPatcher
     /// <typeparam name="dataT">data type of the port</typeparam>
     public class Port<dataT> : Port, IPort<dataT>
     {
-        public void RegisterPort(Node node, int portNumber, int portGroup, bool inPort)
+        public void RegisterPort(Node node, int portNumber, int portGroup, InputOutput InOut)
         {
             this.node = node;
             this.portNumber = portNumber;
             this.portGroup = portGroup;
-            this.inPort = inPort;
+            this.InOut = InOut;
         }
         public Type DataType { get => typeof(dataT); }
         public List<dataT> data = new List<dataT>();
         // Temporary setup: Force new data to be added instead of overriding.
         public List<dataT> Data { get => data; set => data.AddRange(value); }
+        public int DataCount => data.Count;
         // Casting issues might occur here. Needs deep testing
         /// <summary>
         /// Get data castable to type T

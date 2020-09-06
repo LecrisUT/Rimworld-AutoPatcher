@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using Verse;
 using HarmonyLib;
+using System;
 
 namespace AutoPatcher
 {
     /// <summary>
     /// Basic node object
     /// </summary>
-    public class Node : IExposable, ILoadReferenceable
+    public class Node : IExposable, ILoadReferenceable, IEquatable<Node>
     {
         /// <summary>
         /// Global index for quick index creation
@@ -68,19 +69,21 @@ namespace AutoPatcher
         {
             if (Scribe.mode == LoadSaveMode.Saving)
             {
-                if (!nodeDef.SaveInPort)
+                // if (!nodeDef.SaveInPort)
                     inputPorts.Do(t => t.Clear());
-                if (!nodeDef.SaveOutPort)
+                // if (!nodeDef.SaveOutPort)
                     outputPorts.Do(t => t.Clear());
             }
-            Scribe_Collections.Look(ref inputPorts, "inputPorts", LookMode.Deep);
-            Scribe_Collections.Look(ref outputPorts, "outputPorts", LookMode.Deep);
+            Scribe_Defs.Look(ref patchTree, "patchTree");
             Scribe_Values.Look(ref index, "index");
             Scribe_Values.Look(ref name, "name");
-            Scribe_Defs.Look(ref patchTree, "patchTree");
+            Scribe_Collections.Look(ref inputPorts, "inputPorts", LookMode.Deep);
+            Scribe_Collections.Look(ref outputPorts, "outputPorts", LookMode.Deep);
         }
 
         public string GetUniqueLoadID()
-            => patchTree.GetUniqueLoadID() + "_Node" + index;
+            => patchTree.defName + "_Node" + index;
+        public override int GetHashCode() => GetUniqueLoadID().GetHashCode();
+        public bool Equals(Node other) => GetUniqueLoadID() == other.GetUniqueLoadID();
     }
 }
