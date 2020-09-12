@@ -194,14 +194,19 @@ namespace AutoPatcher
                         {
                             if (ins2.LoadsConstant(-1))
                                 continue;
-                            for (int l = 0; l < int.MaxValue; l++)
+                            if (ins2.opcode == OpCodes.Ldc_I4_S)
                             {
-                                if (ins2.LoadsConstant(l))
-                                {
-                                    instructionList[i - 1] = new CodeInstruction(OpCodes.Ldc_I4, l + offset);
-                                    break;
-                                }
+                                if (!(ins2.operand is int val) || val < 0)
+                                    continue;
+                                instructionList[i - 1] = new CodeInstruction(OpCodes.Ldc_I4, val + offset);
                             }
+                            else
+                                for (int l = 0; l < 9; l++)
+                                    if (ins2.LoadsConstant(l))
+                                    {
+                                        instructionList[i - 1] = new CodeInstruction(OpCodes.Ldc_I4, l + offset);
+                                        break;
+                                    }
                         }
                     }
                 }

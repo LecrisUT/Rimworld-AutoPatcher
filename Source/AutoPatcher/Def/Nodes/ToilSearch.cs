@@ -44,7 +44,7 @@ namespace AutoPatcher
                         var interfaceMap = nType.GetInterfaceMap(typeof(IEnumerator));
                         var MoveNext = AccessTools.Method(nType, "MoveNext");
                         var get_Current = nType.GetInterfaceMap(typeof(IEnumerator<Toil>)).TargetMethods.First();
-                        var Current =  GetFieldInfo(get_Current);
+                        var Current = GetFieldInfo(get_Current);
                         var enumInfo = new EnumInfo(Current, null);
                         if (SearchMoveNext(MoveNext, targetMethods, ToilGenerators, ref enumInfo, out var SearchResults, out var toilInfo))
                         {
@@ -64,7 +64,7 @@ namespace AutoPatcher
             }
             var foundActions = ResultB(foundPorts).GetData<List<EnumItemPos<SavedList<MethodInfo>>>>().SelectMany(t => t.SelectMany(tt => tt.target)).ToList();
             foundActions.RemoveDuplicates();
-            foundPorts[1].SetData(targets.Where(t=>foundActions.Contains(t.method)).ToList());
+            foundPorts[1].SetData(targets.Where(t => foundActions.Contains(t.method)).ToList());
             return true;
         }
         private static FieldInfo GetFieldInfo(MethodInfo getterMethod)
@@ -103,7 +103,7 @@ namespace AutoPatcher
             catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
             foreach (var instruction in instructionList)
                 if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
-                    instruction.operand is MethodInfo calledMethod && ActionList.Any(t => IsBaseMethod(t,calledMethod)))
+                    instruction.operand is MethodInfo calledMethod && ActionList.Any(t => IsBaseMethod(t, calledMethod)))
                 {
                     foundResult = true;
                     ActionsFound.Add(calledMethod);
@@ -121,7 +121,7 @@ namespace AutoPatcher
             bool foundResult = false;
             bool foundSwitch = false;
 
-            var toilLabelPos = new Dictionary<Label, int>();
+            var toilLabelPos = new List<(Label label, int pos)>();
             var instructionList = PatchProcessor.GetCurrentInstructions(searchMethod);
             for (int i = 0; i < instructionList.Count; i++)
             {
@@ -154,7 +154,7 @@ namespace AutoPatcher
                             if (toilLabels.Contains(label))
                             {
                                 found = true;
-                                toilLabelPos.Add(label, j);
+                                toilLabelPos.Add((label, j));
                             }
                         }
                         if (found && toilLabelPos.Count == toilLabels.Length)
@@ -170,7 +170,7 @@ namespace AutoPatcher
                         var currInstruction = instructionList[j];
                         if (!currInstruction.labels.NullOrEmpty() && currInstruction.labels.Contains(label2.Value))
                         {
-                            toilLabelPos.Add(label2.Value, j);
+                            toilLabelPos.Add((label2.Value, j));
                             break;
                         }
                     }
@@ -191,12 +191,15 @@ namespace AutoPatcher
             if (!foundSwitch)
                 return false;
             // Search each toil: Assume each one exits with Ret
+            toilLabelPos.OrderBy(t => t.pos);
             int toilIndex = 0;
-            foreach (var labelPos in toilLabelPos)
+            for (int j = 0; j < toilLabelPos.Count; j++)
             {
+                var labelPos = toilLabelPos[j];
                 bool flagFound = false;
                 var ActionsFound = new List<MethodInfo>();
-                for (int i = labelPos.Value; i < instructionList.Count; i++)
+                var end = j == toilLabelPos.Count - 1 ? instructionList.Count : toilLabelPos[j + 1].pos;
+                for (int i = labelPos.pos; i < end; i++)
                 {
                     var instruction = instructionList[i];
                     // Action being saved into Toil
@@ -229,13 +232,15 @@ namespace AutoPatcher
                         continue;
                     }
                     // End of Toil
-                    if (instruction.opcode == OpCodes.Ret)
+                    /*if (instruction.opcode == OpCodes.Ret)
                     {
-                        toilInfo.Add(new EnumItemInfo(labelPos.Key, labelPos.Value, i));
+                        toilInfo.Add(new EnumItemInfo(labelPos.label, labelPos.pos, i));
                         toilIndex++;
                         break;
-                    }
+                    }*/
                 }
+                toilInfo.Add(new EnumItemInfo(labelPos.label, labelPos.pos, end - 1));
+                toilIndex++;
             }
             return foundResult;
             bool loadsState(CodeInstruction instruction, EnumInfo info)
