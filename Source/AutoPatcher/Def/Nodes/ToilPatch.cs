@@ -129,6 +129,9 @@ namespace AutoPatcher
                 var enumInfo = enumInfoList[i];
                 switchField = enumInfo.State;
                 actions.RemoveDuplicates();
+#if DEBUG
+                Log.Message($"Test 0.0: {type} : {method} : {Helper_Prepare(type, ntype, method, enumInfo, actions, toilInfo)}");
+#endif
                 if (Helper_Prepare(type, ntype, method, enumInfo, actions, toilInfo))
                 {
                     currMethod = method;
@@ -143,7 +146,7 @@ namespace AutoPatcher
         private static List<(int pos, int offset)> Offsets;
         private static List<(Label label, int pos, int length)> NewItems;
         private static FieldInfo switchField;
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator, MethodBase original)
         {
             List<CodeInstruction> instructionList = instructions.ToList();
             Offsets = new List<(int, int)>();
@@ -213,6 +216,15 @@ namespace AutoPatcher
             }
             if (!successfull)
                 return null;
+#if DEBUG
+            var test = new System.Text.StringBuilder($"Test 0.1: {original.DeclaringType} : {original}\n");
+            for (int i = 0; i < instructionList.Count; i++)
+            {
+                var ins = instructionList[i];
+                test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand}");
+            }
+            Log.Message(test.ToString());
+#endif
             return instructionList;
         }
         public static bool Helper_Transpile(ref List<CodeInstruction> instructions, ILGenerator generator, int pos, List<MethodInfo> actions, out List<(int pos, int offset)> CIOffsets, out List<(Label,int,int)> newItems)
