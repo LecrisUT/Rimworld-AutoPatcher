@@ -218,10 +218,36 @@ namespace AutoPatcher
                 return null;
 #if DEBUG
             var test = new System.Text.StringBuilder($"Test 0.1: {original.DeclaringType} : {original}\n");
+            foreach (var target in Targets)
+            {
+                test.Append($"{target.index} : {target.pos} :");
+                foreach (var item in target.target)
+                    test.Append($", {item}");
+                test.AppendLine();
+            }
+            test.AppendLine();
             for (int i = 0; i < instructionList.Count; i++)
             {
                 var ins = instructionList[i];
-                test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand}");
+                var str = "";
+                if (ins.operand is Label[] labels)
+                {
+                    foreach (var label in labels)
+                        for (int j = 0; j < instructionList.Count; j++)
+                            if (instructionList[j].labels.Contains(label))
+                            {
+                                str += $", {j}";
+                                break;
+                            }
+                }
+                else if (ins.operand is Label label)
+                    for (int j = 0; j < instructionList.Count; j++)
+                        if (instructionList[j].labels.Contains(label))
+                        {
+                            str = $"{j}";
+                            break;
+                        }
+                test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : {str}");
             }
             Log.Message(test.ToString());
 #endif

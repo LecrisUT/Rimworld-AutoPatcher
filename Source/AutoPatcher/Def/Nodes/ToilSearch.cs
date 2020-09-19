@@ -190,16 +190,55 @@ namespace AutoPatcher
             // No solution for method without Switch
             if (!foundSwitch)
                 return false;
-            // Search each toil: Assume each one exits with Ret
-            toilLabelPos.OrderBy(t => t.pos);
-            int toilIndex = 0;
-            for (int j = 0; j < toilLabelPos.Count; j++)
+            // Determine Toil code range
+            foreach (var toilLabel in toilLabelPos)
             {
-                var labelPos = toilLabelPos[j];
+                var pos = toilLabel.pos;
+                var instruction = instructionList[pos];
+                if (instruction.opcode == OpCodes.Br_S || instruction.opcode == OpCodes.Br)
+                {
+                    var label = (Label)instruction.operand;
+                    for (int j = 0; j < instructionList.Count; j++)
+                        if (instructionList[j].labels.Contains(label))
+                        {
+                            pos = j;
+                            break;
+                        }
+                }
+                var endPos = instructionList.Count - 1;
+                foreach (var otherToilLabel in toilLabelPos)
+                {
+                    if (toilLabel.label == otherToilLabel.label)
+                        continue;
+                    var otherPos = otherToilLabel.pos;
+                    if (otherPos > pos && otherPos < endPos)
+                    {
+                        endPos = otherPos - 1;
+                        continue;
+                    }
+                    var otherInstruction = instructionList[otherPos];
+                    if (otherInstruction.opcode == OpCodes.Br_S || otherInstruction.opcode == OpCodes.Br)
+                    {
+                        var label = (Label)otherInstruction.operand;
+                        for (int j = 0; j < instructionList.Count; j++)
+                            if (instructionList[j].labels.Contains(label))
+                            {
+                                otherPos = j;
+                                break;
+                            }
+                        if (otherPos > pos && otherPos < endPos)
+                            endPos = otherPos - 1;
+                    }
+                }
+                toilInfo.Add(new EnumItemInfo(toilLabel.label, pos, endPos));
+            }
+            // Search each toil
+            for (int toilIndex = 0; toilIndex < toilInfo.Count; toilIndex++)
+            {
+                var info = toilInfo[toilIndex];
                 bool flagFound = false;
                 var ActionsFound = new List<MethodInfo>();
-                var end = j == toilLabelPos.Count - 1 ? instructionList.Count : toilLabelPos[j + 1].pos;
-                for (int i = labelPos.pos; i < end; i++)
+                for (int i = info.startPos; i < info.endPos + 1; i++)
                 {
                     var instruction = instructionList[i];
                     // Action being saved into Toil
@@ -239,9 +278,43 @@ namespace AutoPatcher
                         break;
                     }*/
                 }
-                toilInfo.Add(new EnumItemInfo(labelPos.label, labelPos.pos, end - 1));
-                toilIndex++;
             }
+#if DEBUG
+            if (foundResult)
+            {
+                var test = new System.Text.StringBuilder($"Test 1.1: {searchMethod.DeclaringType} : {searchMethod}\n");
+                for (int i = 0; i < toilInfo.Count; i++)
+                {
+                    var info = toilInfo[i];
+                    test.AppendLine($"[{i}] {info.startPos} : {info.endPos}");
+                }
+                test.AppendLine();
+                for (int i = 0; i < instructionList.Count; i++)
+                {
+                    var ins = instructionList[i];
+                    var str = "";
+                    if (ins.operand is Label[] labels)
+                    {
+                        foreach (var label in labels)
+                            for (int j = 0; j < instructionList.Count; j++)
+                                if (instructionList[j].labels.Contains(label))
+                                {
+                                    str += $", {j}";
+                                    break;
+                                }
+                    }
+                    else if (ins.operand is Label label)
+                        for (int j = 0; j < instructionList.Count; j++)
+                            if (instructionList[j].labels.Contains(label))
+                            {
+                                str = $"{j}";
+                                break;
+                            }
+                    test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : {str}");
+                }
+                Log.Message(test.ToString());
+            }
+#endif
             return foundResult;
             bool loadsState(CodeInstruction instruction, EnumInfo info)
                 => instruction.LoadsField(info.State) || (info.localState != null && instruction.IsLdloc(info.localState));
