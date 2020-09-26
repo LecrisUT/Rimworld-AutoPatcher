@@ -101,6 +101,8 @@
         <defListName>
             <li>ConstructSuccessChance</li>
             <li>FixBrokenDownBuildingSuccessChance</li>
+            <li>TameAnimalChance</li>
+            <li>TrainAnimalChance</li>
         </defListName>
     </AutoPatcher.BeginDef>
 
