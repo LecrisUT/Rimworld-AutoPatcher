@@ -7,6 +7,7 @@ using HarmonyLib;
 using System.Reflection.Emit;
 using AutoPatcher.Utility;
 using Verse.AI;
+using System.Text;
 
 namespace AutoPatcher
 {
@@ -118,6 +119,7 @@ namespace AutoPatcher
             var targetCI = TargetPos(node.inputPorts).GetDataList<List<EnumItemPos<SavedList<MethodInfo>>>>();
             var toilInfoList = InputA(node.inputPorts).GetDataList<List<EnumItemInfo>>();
             var enumInfoList = EnumInfo(node.inputPorts).GetDataList<EnumInfo>();
+            DebugLevel = node.DebugLevel;
             for (int i = 0; i < TypeMethods.Count; i++)
             {
                 Type type = TypeMethods[i].type;
@@ -129,9 +131,6 @@ namespace AutoPatcher
                 var enumInfo = enumInfoList[i];
                 switchField = enumInfo.State;
                 actions.RemoveDuplicates();
-#if DEBUG
-                Log.Message($"Test 0.0: {type} : {method} : {Helper_Prepare(type, ntype, method, enumInfo, actions, toilInfo)}");
-#endif
                 if (Helper_Prepare(type, ntype, method, enumInfo, actions, toilInfo))
                 {
                     currMethod = method;
@@ -146,8 +145,10 @@ namespace AutoPatcher
         private static List<(int pos, int offset)> Offsets;
         private static List<(Label label, int pos, int length)> NewItems;
         private static FieldInfo switchField;
+        private static int DebugLevel;
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator, MethodBase original)
         {
+            var Original = (MethodInfo)original;
             List<CodeInstruction> instructionList = instructions.ToList();
             Offsets = new List<(int, int)>();
             NewItems = new List<(Label, int, int)>();
@@ -169,9 +170,9 @@ namespace AutoPatcher
                 }
             }
             NewItems.SortBy(t => t.pos);
-            NodeUtility.RegisterOffset(currMethod, Offsets);
-            NodeUtility.AddEnumerableItem(currMethod, NewItems);
-            if (successfull && NodeUtility.enumerableItems.TryGetValue(currMethod, out var items))
+            NodeUtility.RegisterOffset(Original, Offsets);
+            NodeUtility.AddEnumerableItem(Original, NewItems);
+            if (successfull && NodeUtility.enumerableItems.TryGetValue(Original, out var items))
             {
                 for (int i = 0; i < instructionList.Count; i++)
                     if (instructionList[i].opcode == OpCodes.Switch)
@@ -197,9 +198,10 @@ namespace AutoPatcher
                         {
                             if (ins2.LoadsConstant(-1))
                                 continue;
-                            if (ins2.opcode == OpCodes.Ldc_I4_S)
+                            if (ins2.opcode == OpCodes.Ldc_I4_S || ins2.opcode == OpCodes.Ldc_I4)
                             {
-                                if (!(ins2.operand is int val) || val < 0)
+                                int val = (sbyte)ins2.operand;
+                                if (val < 0)
                                     continue;
                                 instructionList[i - 1] = new CodeInstruction(OpCodes.Ldc_I4, val + offset);
                             }
@@ -216,41 +218,59 @@ namespace AutoPatcher
             }
             if (!successfull)
                 return null;
-#if DEBUG
-            var test = new System.Text.StringBuilder($"Test 0.1: {original.DeclaringType} : {original}\n");
-            foreach (var target in Targets)
+            if (DebugLevel > 4)
             {
-                test.Append($"{target.index} : {target.pos} :");
-                foreach (var item in target.target)
-                    test.Append($", {item}");
-                test.AppendLine();
-            }
-            test.AppendLine();
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                var ins = instructionList[i];
-                var str = "";
-                if (ins.operand is Label[] labels)
+                var test = new StringBuilder($"[[LC]AutoPatcher] Debug ToilPatch Node : DebugLevel = {DebugLevel}\n{Original.DeclaringType} : {Original}\n");
+                items = NodeUtility.enumerableItems[Original];
+                for (int i = 0; i < items.Count; i++)
                 {
-                    foreach (var label in labels)
+                    var item = items[i];
+                    test.AppendLine($"[{i}] {item.startPos} : {item.endPos}");
+                }
+                test.AppendLine();
+                foreach (var target in Targets)
+                {
+                    test.Append($"{target.index} : {target.pos} :");
+                    foreach (var item in target.target)
+                        test.Append($", {item}");
+                    test.AppendLine();
+                }
+                test.AppendLine();
+                foreach (var offset in Offsets)
+                {
+                    test.AppendLine($"{offset.pos} : {offset.offset}");
+                }
+                test.AppendLine();
+                foreach (var item in NewItems)
+                {
+                    test.AppendLine($"{item.pos} : {item.length}");
+                }
+                test.AppendLine();
+                for (int i = 0; i < instructionList.Count; i++)
+                {
+                    var ins = instructionList[i];
+                    var str = "";
+                    if (ins.operand is Label[] labels)
+                    {
+                        foreach (var label in labels)
+                            for (int j = 0; j < instructionList.Count; j++)
+                                if (instructionList[j].labels.Contains(label))
+                                {
+                                    str += $", {j}";
+                                    break;
+                                }
+                    }
+                    else if (ins.operand is Label label)
                         for (int j = 0; j < instructionList.Count; j++)
                             if (instructionList[j].labels.Contains(label))
                             {
-                                str += $", {j}";
+                                str = $"{j}";
                                 break;
                             }
+                    test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : [{ins.operand?.GetType()}] : {str}");
                 }
-                else if (ins.operand is Label label)
-                    for (int j = 0; j < instructionList.Count; j++)
-                        if (instructionList[j].labels.Contains(label))
-                        {
-                            str = $"{j}";
-                            break;
-                        }
-                test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : {str}");
+                Log.Message(test.ToString());
             }
-            Log.Message(test.ToString());
-#endif
             return instructionList;
         }
         public static bool Helper_Transpile(ref List<CodeInstruction> instructions, ILGenerator generator, int pos, List<MethodInfo> actions, out List<(int pos, int offset)> CIOffsets, out List<(Label,int,int)> newItems)

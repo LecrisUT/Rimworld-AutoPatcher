@@ -102,7 +102,7 @@ namespace AutoPatcher
             try { instructionList = PatchProcessor.GetCurrentInstructions(searchMethod); }
             catch { instructionList = PatchProcessor.GetOriginalInstructions(searchMethod); }
             foreach (var instruction in instructionList)
-                if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
+                if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt || instruction.opcode == OpCodes.Ldftn) &&
                     instruction.operand is MethodInfo calledMethod && ActionList.Any(t => IsBaseMethod(t, calledMethod)))
                 {
                     foundResult = true;
@@ -310,7 +310,7 @@ namespace AutoPatcher
                                 str = $"{j}";
                                 break;
                             }
-                    test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : {str}");
+                    test.AppendLine($"[{i}/{ins.labels.Count}] {ins.opcode} : {ins.operand} : [{ins.operand?.GetType()}] : {str}");
                 }
                 Log.Message(test.ToString());
             }

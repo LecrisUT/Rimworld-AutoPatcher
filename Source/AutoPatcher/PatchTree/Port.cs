@@ -124,8 +124,7 @@ namespace AutoPatcher
                 return "(empty)";
             StringBuilder builder = new StringBuilder();
             //if (IsTuple(DataType))
-            data.Do(t => builder.Append($"{t}, "));
-            builder.Length -= 2;
+            data.Do(t => builder.AppendLine($"{t}"));
             return builder.ToString();
         }
 
